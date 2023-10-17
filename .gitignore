@@ -5,4 +5,7 @@ target/**
 .bloop/**
 .bsp/**
 .idea/**
+project/.bloop/**
+project/metals.sbt
+project/project/metals.sbt
 
