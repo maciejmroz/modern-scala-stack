@@ -9,6 +9,11 @@ as approachable as possible.
 
 I've put several comments in the code where I believe it makes sense to do more explaining.
 
+## Example app
+
+Welcome to Barker, which is like Twitter, except it's for dogs, not for birds! We are addressing
+completely new and unexplored niche for revolutionary messaging app!
+
 ## The stack
 
 Highlights:
@@ -39,5 +44,8 @@ much. So:
   but I believe lifting pure values to `IO` isn't really much different from using `Id` in testing.
 - I absolutely _do_ use macro-based capabilities of libraries like Caliban and intend to use it
   in cases where I believe it to be improvement to productivity and/or readability.
+- The syntax used is new Python-esque Scala syntax, with scalafmt set up to rewrite into
+  this syntax. This is an experiment at reducing visual noise, which is an aspect of
+  Python (and Haskell ;) ) I really like.
 
 Again, look for comments in the code for more specifics.

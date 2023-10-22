@@ -1,7 +1,6 @@
 package barker.services
 
 import java.util.UUID
-import java.time.ZonedDateTime
 import cats.syntax.all.*
 import cats.effect.IO
 import cats.effect.kernel.Ref
@@ -23,10 +22,26 @@ trait UsersService:
 /** In-memory impl
   */
 private[services] class UsersServiceRefImpl(ref: Ref[IO, Map[AccessToken, User]]) extends UsersService:
+
+  /** This is private case class that exist only to give names to tuples extracted from Map[AccessToken, User], so we
+    * avoid syntax like _._1 which I find less readable.
+    */
+  private final case class AccessTokenWithUser(accessToken: AccessToken, user: User)
+
   override def login(userName: Name): IO[AccessToken] = ref.modify { users =>
-    user
+    val newAccessToken = AccessToken(UUID.randomUUID())
+    val accessTokenWithUser = users.find((_, u) => u.name == userName).map(AccessTokenWithUser.apply)
+    val usersWithAccessTokenRemoved = accessTokenWithUser.map(_.accessToken) match
+      case Some(at) => users - at
+      case None     => users
+    val newUser = accessTokenWithUser.map(_.user).getOrElse(User(UserId(UUID.randomUUID()), userName))
+    (usersWithAccessTokenRemoved + (newAccessToken -> newUser), newAccessToken)
   }
 
-  override def byId(userId: UserId): IO[Option[User]] = ???
+  override def byId(userId: UserId): IO[Option[User]] =
+    ref.get.map(_.find(_._2.id == userId).map(_._2))
 
-  override def byAccessToken(accessToken: AccessToken): IO[Option[User]] = ???
+  /** We are optimizing for fetching by access token with other operations being implemented in most naive way possible.
+    */
+  override def byAccessToken(accessToken: AccessToken): IO[Option[User]] =
+    ref.get.map(_.get(accessToken))
