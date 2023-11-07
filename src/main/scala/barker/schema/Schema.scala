@@ -7,7 +7,7 @@ import caliban.schema.ArgBuilder
 import caliban.Value.StringValue
 import io.scalaland.chimney.dsl.*
 import barker.entities.{BarkId, UserId}
-import barker.services.BarksService
+import barker.services.{BarkService, Services}
 import cats.data.Kleisli
 
 /** Request context is needed to pass information from HTTP request to the resolver. It forces us to use
@@ -55,11 +55,11 @@ final case class Query(barks: UserId => RequestIO[List[Bark]], token: RequestIO[
 /** Schema object contains queries, mutations, and subscriptions for the API, as well as resolvers (these should really
   * just map domain model to API types)
   */
-class BarkerSchema(barksService: BarksService):
+class BarkerSchema(services: Services):
   // transformInto comes from chimney library which allows easy mapping between similar types
   // Quite useful and intuitive, even if using macro magic, I believe it improves readability.
   private def listBarks(authorId: UserId): RequestIO[List[Bark]] =
-    RequestIO.liftIO(barksService.list(authorId).map(_.map(_.transformInto[Bark])))
+    RequestIO.liftIO(services.barkService.list(authorId).map(_.map(_.transformInto[Bark])))
 
   private def token: RequestIO[String] =
     for ctx <- RequestIO.ctx

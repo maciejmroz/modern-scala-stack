@@ -8,9 +8,9 @@ import org.scalatest.freespec.AsyncFreeSpec
 import barker.entities.UserId
 import java.util.UUID
 
-class BarksServiceTest extends AsyncFreeSpec with AsyncIOSpec with Matchers:
-  "BarksService" - {
-    val barksServiceIO = BarksService()
+class BarkServiceTest extends AsyncFreeSpec with AsyncIOSpec with Matchers:
+  "BarkService" - {
+    val barksServiceIO = BarkService()
     val authorId = UserId(UUID.randomUUID())
     val authorId2 = UserId(UUID.randomUUID())
 

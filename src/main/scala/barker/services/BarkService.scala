@@ -17,14 +17,14 @@ import barker.entities.*
   * significant barrier to entry, so what I am trying here is answering a question: what if we just don't do it?
   */
 
-trait BarksService:
+trait BarkService:
   def post(author: UserId, content: String): IO[Bark]
   def rebark(author: UserId, sourceBarkId: BarkId, addedContent: String): IO[Bark]
   def list(author: UserId): IO[List[Bark]]
 
 /** Ref-based impl might not be something to use in production but is definitely usable for testing
   */
-private[services] class BarksServiceRefImpl(ref: Ref[IO, Map[BarkId, Bark]]) extends BarksService:
+private[services] class BarkServiceRefImpl(ref: Ref[IO, Map[BarkId, Bark]]) extends BarkService:
 
   override def post(author: UserId, content: String): IO[Bark] =
     val bark = Bark(
@@ -67,8 +67,8 @@ private[services] class BarksServiceRefImpl(ref: Ref[IO, Map[BarkId, Bark]]) ext
   override def list(author: UserId): IO[List[Bark]] =
     ref.get.map(_.values.toList.sortBy(_.createdAt))
 
-object BarksService:
+object BarkService:
   // Let's have Ref based impl for now
-  // as constructing a Ref is an IO by itself, we return IO[BarksService] rather than raw value
-  def apply(): IO[BarksService] =
-    Ref[IO].of(Map.empty[BarkId, Bark]).map(new BarksServiceRefImpl(_))
+  // as constructing a Ref is an IO by itself, we return IO[BarkService] rather than raw value
+  def apply(): IO[BarkService] =
+    Ref[IO].of(Map.empty[BarkId, Bark]).map(new BarkServiceRefImpl(_))

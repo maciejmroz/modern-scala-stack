@@ -17,10 +17,10 @@ import java.time.ZonedDateTime
 opaque type Name = String
 def Name(value: String): Name = value
 
-opaque type AccessToken = UUID
+opaque type AccessToken = String
 object AccessToken:
-  def apply(id: UUID): AccessToken = id
-  extension (id: AccessToken) def value: UUID = id
+  def apply(id: String): AccessToken = id
+  extension (id: AccessToken) def value: String = id
 
 opaque type Likes = Long
 object Likes:

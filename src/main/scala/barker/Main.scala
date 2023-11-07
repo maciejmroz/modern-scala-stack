@@ -20,7 +20,7 @@ import org.typelevel.ci.CIStringSyntax
 import zio.{Runtime, ZEnvironment}
 import sttp.tapir.json.circe.*
 import barker.schema.{*, given}
-import barker.services.BarksService
+import barker.services.Services
 
 object Main extends IOApp:
   given Logger[RequestIO] = Slf4jLogger.getLogger[RequestIO]
@@ -70,8 +70,8 @@ object Main extends IOApp:
 
         val init = for
           // TODO: we need to run barksService creation in IO ... refactor it to be nicer
-          barksService <- RequestIO.liftIO(BarksService())
-          schema = new BarkerSchema(barksService)
+          services <- RequestIO.liftIO(Services())
+          schema = new BarkerSchema(services)
           api = graphQL[RequestContext, barker.schema.Query, Unit, Unit](RootResolver(schema.query))
           interpreter <- interop.toEffect(api.interpreter)
         yield interpreter

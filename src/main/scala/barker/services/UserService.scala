@@ -10,7 +10,7 @@ import barker.entities.*
 /** This is not real auth in any way, we just generate access token that can be used in subsequent requests and provide
   * a way to fetch user based on access token or user id. Just bare minimum to wire into larger system.
   */
-trait UsersService:
+trait UserService:
   /** Creates new user if one doesn't exist. Invalidates any previous access token for the user.
     * @return
     *   access token
@@ -21,7 +21,7 @@ trait UsersService:
 
 /** In-memory impl
   */
-private[services] class UsersServiceRefImpl(ref: Ref[IO, Map[AccessToken, User]]) extends UsersService:
+private[services] class UserServiceRefImpl(ref: Ref[IO, Map[AccessToken, User]]) extends UserService:
 
   /** This is private case class that exist only to give names to tuples extracted from Map[AccessToken, User], so we
     * avoid syntax like _._1 which I find less readable.
@@ -29,7 +29,7 @@ private[services] class UsersServiceRefImpl(ref: Ref[IO, Map[AccessToken, User]]
   private final case class AccessTokenWithUser(accessToken: AccessToken, user: User)
 
   override def login(userName: Name): IO[AccessToken] = ref.modify { users =>
-    val newAccessToken = AccessToken(UUID.randomUUID())
+    val newAccessToken = AccessToken(UUID.randomUUID().toString)
     val accessTokenWithUser = users.find((_, u) => u.name == userName).map(AccessTokenWithUser.apply)
     val usersWithAccessTokenRemoved = accessTokenWithUser.map(_.accessToken) match
       case Some(at) => users - at
@@ -45,3 +45,8 @@ private[services] class UsersServiceRefImpl(ref: Ref[IO, Map[AccessToken, User]]
     */
   override def byAccessToken(accessToken: AccessToken): IO[Option[User]] =
     ref.get.map(_.get(accessToken))
+
+
+object UserService:
+  def apply(): IO[UserService] =
+    Ref[IO].of(Map.empty[AccessToken, User]).map(new UserServiceRefImpl(_))
