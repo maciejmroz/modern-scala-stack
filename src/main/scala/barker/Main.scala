@@ -19,13 +19,18 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.ci.CIStringSyntax
 import zio.{Runtime, ZEnvironment}
 import sttp.tapir.json.circe.*
+import pureconfig.*
+import pureconfig.generic.derivation.default.*
 import barker.schema.{*, given}
 import barker.services.Services
 
+final case class AppConfig(db: DBConfig) derives ConfigReader
+
 object Main extends IOApp:
-  given Logger[RequestIO] = Slf4jLogger.getLogger[RequestIO]
+  given logger: Logger[RequestIO] = Slf4jLogger.getLogger[RequestIO]
 
   private val TokenHeader = ci"X-Token"
+  private val appConfig = ConfigSource.default.loadOrThrow[AppConfig]
 
   /** This is middleware that takes token from request, constructs RequestContext, and injects it into RequestIO (using
     * Kleisli.local) Original Caliban sample is using cats-mtl Local typeclass to achieve simpler notation, below it is
@@ -65,12 +70,14 @@ object Main extends IOApp:
       .parallel[RequestIO]
       .flatMap { dispatcher =>
         // we want to be consistent with using "given" rather than "implicit"
-        // given Dispatcher[RequestIO] = dispatcher
         given interop: CatsInterop.Contextual[RequestIO, RequestContext] = CatsInterop.contextual(dispatcher)
 
         val init = for
-          // TODO: we need to run barksService creation in IO ... refactor it to be nicer
+          _ <- logger.info(s"Starting Barker, running db migrations ...")
+          _ <- RequestIO.liftIO(DB.runMigrations(appConfig.db))
+          _ <- logger.info(s"Wiring services ...")
           services <- RequestIO.liftIO(Services())
+          _ <- logger.info(s"Building GraphQL schema ...")
           schema = new BarkerSchema(services)
           api = graphQL[RequestContext, barker.schema.Query, Unit, Unit](RootResolver(schema.query))
           interpreter <- interop.toEffect(api.interpreter)

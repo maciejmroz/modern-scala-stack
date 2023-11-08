@@ -7,7 +7,7 @@ import caliban.schema.ArgBuilder
 import caliban.Value.StringValue
 import io.scalaland.chimney.dsl.*
 import barker.entities.{BarkId, UserId}
-import barker.services.{BarkService, Services}
+import barker.services.Services
 import cats.data.Kleisli
 
 /** Request context is needed to pass information from HTTP request to the resolver. It forces us to use
