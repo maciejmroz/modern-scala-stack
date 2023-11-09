@@ -1,16 +1,17 @@
-package barker.services
+package barker
 
 import cats.effect.*
-import cats.effect.testing.scalatest.AsyncIOSpec
-import org.scalatest.matchers.should.Matchers
+import doobie.implicits.*
 import org.scalatest.freespec.AsyncFreeSpec
 
-class SampleIntegration extends AsyncFreeSpec with AsyncIOSpec with Matchers:
+class SampleIntegration extends DbOnlySpec:
   "SampleIntegration" - {
 
     "should run" in {
-      IO {
-        assert(true)
-      }
+      for result <- sql"select 1"
+          .query[String]
+          .unique
+          .transact(xa)
+      yield result shouldBe "1"
     }
   }
