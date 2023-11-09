@@ -12,15 +12,16 @@ import java.time.ZonedDateTime
   * a companion object of opaque type (there are some minor advantages to doing so).
   *
   * This is a bit more ceremony than "final case class(value: V) extends AnyVal" from Scala 2 but promises more
-  * performance due to avoiding boxing on the JVM. Unfortunately, usage is slightly less convenient.
+  * performance due to avoiding boxing on the JVM. With type companion template traits (UUIDCompanion etc) it's quite
+  * convenient to use.
   */
 opaque type Name = String
-def Name(value: String): Name = value
+object Name:
+  def apply(value: String): Name = value
+  extension (id: Name) def value: String = id
 
 opaque type AccessToken = String
-object AccessToken:
-  def apply(id: String): AccessToken = id
-  extension (id: AccessToken) def value: String = id
+object AccessToken extends RandomTokenCompanion[AccessToken]
 
 opaque type Likes = Long
 object Likes:
@@ -33,14 +34,10 @@ object Rebarks:
   extension (rebarks: Rebarks) def value: Long = rebarks
 
 opaque type BarkId = UUID
-object BarkId:
-  def apply(id: UUID): BarkId = id
-  extension (id: BarkId) def value: UUID = id
+object BarkId extends UUIDCompanion[BarkId]
 
 opaque type UserId = UUID
-object UserId:
-  def apply(id: UUID): UserId = id
-  extension (id: UserId) def value: UUID = id
+object UserId extends UUIDCompanion[UserId]
 
 final case class User(id: UserId, name: Name)
 
