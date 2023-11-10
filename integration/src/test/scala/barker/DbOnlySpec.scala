@@ -4,8 +4,8 @@ import cats.effect.*
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.Transactor
 import org.scalatest.Suite
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.freespec.AsyncFreeSpec
+import org.scalatest.matchers.should.Matchers
 import pureconfig.ConfigSource
 
 trait DbOnlySpec extends AsyncFreeSpec with AsyncIOSpec with Matchers:

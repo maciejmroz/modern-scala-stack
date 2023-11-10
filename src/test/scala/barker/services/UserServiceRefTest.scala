@@ -1,19 +1,17 @@
 package barker.services
 
-import cats.effect.*
-import cats.effect.testing.scalatest.AsyncIOSpec
-import org.scalatest.matchers.should.Matchers
+import barker.UnitSpec
 import org.scalatest.freespec.AsyncFreeSpec
 import barker.entities.{AccessToken, Name}
 
-class UserServiceTest extends AsyncFreeSpec with AsyncIOSpec with Matchers:
+class UserServiceRefTest extends UnitSpec:
   "UserService" - {
     val userServiceIO = UserService()
 
     "does not return user when passed invalid token" in {
       for
         userService <- userServiceIO
-        optUser <- userService.byAccessToken(AccessToken("aaa"))
+        optUser <- userService.byAccessToken(AccessToken.random())
       yield optUser shouldBe None
     }
 

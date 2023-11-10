@@ -1,14 +1,13 @@
 package barker.services
 
+import barker.UnitSpec
 import cats.syntax.all.*
-import cats.effect.*
-import cats.effect.testing.scalatest.AsyncIOSpec
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.freespec.AsyncFreeSpec
 import barker.entities.UserId
+
 import java.util.UUID
 
-class BarkServiceTest extends AsyncFreeSpec with AsyncIOSpec with Matchers:
+class BarkServiceRefTest extends UnitSpec:
   "BarkService" - {
     val barksServiceIO = BarkService()
     val authorId = UserId(UUID.randomUUID())
