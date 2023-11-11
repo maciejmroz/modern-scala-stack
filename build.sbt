@@ -18,6 +18,7 @@ lazy val barkerDependencies = Seq(
   "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "1.2.11",
   "org.tpolecat" %% "doobie-core" % doobieVersion,
   "org.tpolecat" %% "doobie-postgres" % doobieVersion,
+  "org.tpolecat" %% "doobie-scalatest" % doobieVersion,
   "org.tpolecat" %% "doobie-hikari" % doobieVersion,
   "com.github.pureconfig" %% "pureconfig-core" % "0.17.4",
   "org.flywaydb" % "flyway-core" % "9.16.0",
@@ -39,7 +40,7 @@ lazy val barker = project
 
 //TODO: longer term switch to separate set of dependencies for integration tests
 lazy val integration = (project in file("integration"))
-  .dependsOn(barker)
+  .dependsOn(barker % "compile->compile;test->test")
   .settings(
     publish / skip := true,
     libraryDependencies ++= barkerDependencies

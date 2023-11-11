@@ -1,38 +1,43 @@
 package barker.services
 
-import barker.DbOnlySpec
-import barker.entities.{AccessToken, Name}
+import cats.effect.IO
 import org.scalatest.freespec.AsyncFreeSpec
+import barker.DbOnlySpec
+import barker.entities.{AccessToken, Name, User, UserId}
 
-class UserServiceDBTest extends DbOnlySpec:
+class UserServiceDBTest extends DbOnlySpec with UserServiceBehavior:
   "UserService" - {
-    val userServiceIO = UserService.apply(xa)
-  
-    "does not return user when passed invalid token" in {
-      for
-        userService <- userServiceIO
-        optUser <- userService.byAccessToken(AccessToken.random())
-      yield optUser shouldBe None
+    val userServiceIO = UserService(transactor)
+
+    behave like userServiceBehavior(userServiceIO)
+  }
+
+  // We are using Cats Effect support traits so we need to wrap Doobie query checks in IOs
+  "UserService queries type checks" - {
+    val userService = new UserServiceDbImpl(transactor)
+
+    "select user by name" in {
+      IO(check(userService.selectUserByNameQuery(Name("Joe"))))
     }
-  
-    "allows user to log in" in {
-      for
-        userService <- userServiceIO
-        token <- userService.login(Name("Joe"))
-        user <- userService.byAccessToken(token)
-      yield user should not be empty
+
+    "select user by id" in {
+      IO(check(userService.selectUserByIdQuery(UserId.random())))
     }
-  
-    "invalidates old access token on login" in {
-      for
-        userService <- userServiceIO
-        token1 <- userService.login(Name("Joe"))
-        token2 <- userService.login(Name("Joe"))
-        user1 <- userService.byAccessToken(token1)
-        user2 <- userService.byAccessToken(token2)
-      yield
-        user1 shouldBe empty
-        user2 shouldBe defined
-        token1 should not be token2
+
+    "select user by access token" in {
+      IO(check(userService.selectUserByAccessTokenQuery(AccessToken.random())))
     }
+
+    "insert user" in {
+      IO(check(userService.insertUserQuery(User(UserId.random(), Name("Joe")))))
+    }
+
+    "invalidate access token" in {
+      IO(check(userService.invalidateAccessTokenQuery(UserId.random())))
+    }
+
+    "insert access token" in {
+      IO(check(userService.insertAccessTokenQuery(AccessToken.random(), UserId.random())))
+    }
+
   }

@@ -3,11 +3,10 @@ package barker.services
 import barker.UnitSpec
 import org.scalatest.freespec.AsyncFreeSpec
 import barker.entities.{AccessToken, Name}
+import cats.effect.IO
 
-class UserServiceRefTest extends UnitSpec:
-  "UserService" - {
-    val userServiceIO = UserService()
-
+trait UserServiceBehavior extends UnitSpec:
+  def userServiceBehavior(userServiceIO: IO[UserService]): Unit =
     "does not return user when passed invalid token" in {
       for
         userService <- userServiceIO
@@ -36,4 +35,9 @@ class UserServiceRefTest extends UnitSpec:
         token1 should not be token2
     }
 
+class UserServiceRefTest extends UnitSpec with UserServiceBehavior:
+  "UserService" - {
+    val userServiceIO = UserService()
+
+    behave like userServiceBehavior(userServiceIO)
   }
