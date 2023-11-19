@@ -26,23 +26,18 @@ trait UserService:
   */
 private[services] class UserServiceRefImpl(ref: Ref[IO, Map[AccessToken, User]]) extends UserService:
 
-  /** This is private case class that exist only to give names to tuples extracted from Map[AccessToken, User], so we
-    * avoid syntax like _._1 which I find less readable.
-    */
-  private final case class AccessTokenWithUser(accessToken: AccessToken, user: User)
-
   override def login(userName: Name): IO[AccessToken] = ref.modify { users =>
     val newAccessToken = AccessToken(UUID.randomUUID().toString)
-    val accessTokenWithUser = users.find((_, u) => u.name == userName).map(AccessTokenWithUser.apply)
-    val usersWithAccessTokenRemoved = accessTokenWithUser.map(_.accessToken) match
+    val accessTokenWithUser = users.find((_, u) => u.name == userName)
+    val usersWithAccessTokenRemoved = accessTokenWithUser.map((accessToken, _) => accessToken) match
       case Some(at) => users - at
       case None     => users
-    val newUser = accessTokenWithUser.map(_.user).getOrElse(User(UserId(UUID.randomUUID()), userName))
+    val newUser = accessTokenWithUser.map((_, user) => user).getOrElse(User(UserId(UUID.randomUUID()), userName))
     (usersWithAccessTokenRemoved + (newAccessToken -> newUser), newAccessToken)
   }
 
   override def byId(userId: UserId): IO[Option[User]] =
-    ref.get.map(_.find(_._2.id == userId).map(_._2))
+    ref.get.map(_.map((_, user) => user).find(_.id == userId))
 
   /** We are optimizing for fetching by access token with other operations being implemented in most naive way possible.
     */
