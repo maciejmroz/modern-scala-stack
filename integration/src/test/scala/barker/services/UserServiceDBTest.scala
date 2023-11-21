@@ -12,7 +12,7 @@ class UserServiceDBTest extends DbOnlySpec with UserServiceBehavior:
     behave like userServiceBehavior(userServiceIO)
   }
 
-  // We are using Cats Effect support traits so we need to wrap Doobie query checks in IOs
+  // We are using Cats Effect support trait so we need to wrap Doobie query checks in IOs
   "UserService queries type checks" - {
     val userService = new UserServiceDbImpl(transactor)
 

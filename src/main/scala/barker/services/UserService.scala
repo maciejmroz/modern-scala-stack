@@ -10,6 +10,8 @@ import doobie.postgres.implicits.*
 import barker.entities.*
 import doobie.util.update.Update0
 
+import DoobieMappings.given
+
 /** This is not real auth in any way, we just generate access token that can be used in subsequent requests and provide
   * a way to fetch user based on access token or user id. Just bare minimum to wire into larger system.
   */
@@ -45,53 +47,44 @@ private[services] class UserServiceRefImpl(ref: Ref[IO, Map[AccessToken, User]])
     ref.get.map(_.get(accessToken))
 
 private[services] class UserServiceDbImpl(xa: Transactor[IO]) extends UserService:
-  final case class UserDAO(userId: UUID, name: String)
-
-  // This is pretty ugly - need validation + error logging in real world implementation!
-  private def userFromDAO(u: UserDAO): User =
-    User(UserId(u.userId), Name(u.name))
-
-  def selectUserByNameQuery(userName: Name): Query0[UserDAO] =
-    sql"SELECT userId, name FROM user_user WHERE name=${userName.value}"
-      .query[UserDAO]
+  def selectUserByNameQuery(userName: Name): Query0[User] =
+    sql"SELECT userId, name FROM user_user WHERE name=$userName"
+      .query[User]
 
   private def selectUserByName(userName: Name): ConnectionIO[Option[User]] =
     selectUserByNameQuery(userName).option
-      .map(_.map(userFromDAO))
 
-  def selectUserByIdQuery(userId: UserId): Query0[UserDAO] =
-    sql"SELECT userId, name FROM user_user WHERE userId=${userId.value}"
-      .query[UserDAO]
+  def selectUserByIdQuery(userId: UserId): Query0[User] =
+    sql"SELECT userId, name FROM user_user WHERE userId=$userId"
+      .query[User]
 
   private def selectUserById(userId: UserId): ConnectionIO[Option[User]] =
     selectUserByIdQuery(userId).option
-      .map(_.map(userFromDAO))
 
-  def selectUserByAccessTokenQuery(accessToken: AccessToken): Query0[UserDAO] =
+  def selectUserByAccessTokenQuery(accessToken: AccessToken): Query0[User] =
     sql"""SELECT u.userId, u.name FROM user_access_token AS a
          INNER JOIN user_user AS u
          ON u.userId=a.userId
-         WHERE a.accesstoken=${accessToken.value}"""
-      .query[UserDAO]
+         WHERE a.accesstoken=$accessToken"""
+      .query[User]
 
   private def selectUserByAccessToken(accessToken: AccessToken): ConnectionIO[Option[User]] =
     selectUserByAccessTokenQuery(accessToken).option
-      .map(_.map(userFromDAO))
 
   def insertUserQuery(user: User): Update0 =
-    sql"INSERT INTO user_user(userId, name) VALUES(${user.id.value}, ${user.name.value})".update
+    sql"INSERT INTO user_user(userId, name) VALUES(${user.id}, ${user.name})".update
 
   private def insertUser(user: User): ConnectionIO[User] =
     insertUserQuery(user).run.as(user)
 
   def invalidateAccessTokenQuery(userId: UserId): Update0 =
-    sql"DELETE FROM user_access_token WHERE userId=${userId.value}".update
+    sql"DELETE FROM user_access_token WHERE userId=$userId".update
 
   private def invalidateAccessToken(userId: UserId): ConnectionIO[Unit] =
     invalidateAccessTokenQuery(userId).run.void
 
   def insertAccessTokenQuery(accessToken: AccessToken, userId: UserId): Update0 =
-    sql"INSERT INTO user_access_token(accesstoken, userId) VALUES(${accessToken.value}, ${userId.value})".update
+    sql"INSERT INTO user_access_token(accesstoken, userId) VALUES($accessToken, $userId)".update
 
   private def insertAccessToken(accessToken: AccessToken, userId: UserId): ConnectionIO[AccessToken] =
     insertAccessTokenQuery(accessToken, userId).run.as(accessToken)
