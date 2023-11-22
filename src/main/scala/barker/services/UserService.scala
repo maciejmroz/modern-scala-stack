@@ -6,7 +6,6 @@ import cats.effect.IO
 import cats.effect.kernel.Ref
 import doobie.{ConnectionIO, Query0, Transactor}
 import doobie.implicits.*
-import doobie.postgres.implicits.*
 import barker.entities.*
 import doobie.util.update.Update0
 
@@ -48,43 +47,43 @@ private[services] class UserServiceRefImpl(ref: Ref[IO, Map[AccessToken, User]])
 
 private[services] class UserServiceDbImpl(xa: Transactor[IO]) extends UserService:
   def selectUserByNameQuery(userName: Name): Query0[User] =
-    sql"SELECT userId, name FROM user_user WHERE name=$userName"
+    sql"SELECT user_id, name FROM user_user WHERE name=$userName"
       .query[User]
 
   private def selectUserByName(userName: Name): ConnectionIO[Option[User]] =
     selectUserByNameQuery(userName).option
 
   def selectUserByIdQuery(userId: UserId): Query0[User] =
-    sql"SELECT userId, name FROM user_user WHERE userId=$userId"
+    sql"SELECT user_id, name FROM user_user WHERE user_id=$userId"
       .query[User]
 
   private def selectUserById(userId: UserId): ConnectionIO[Option[User]] =
     selectUserByIdQuery(userId).option
 
   def selectUserByAccessTokenQuery(accessToken: AccessToken): Query0[User] =
-    sql"""SELECT u.userId, u.name FROM user_access_token AS a
+    sql"""SELECT u.user_id, u.name FROM user_access_token AS a
          INNER JOIN user_user AS u
-         ON u.userId=a.userId
-         WHERE a.accesstoken=$accessToken"""
+         ON u.user_id=a.user_id
+         WHERE a.access_token=$accessToken"""
       .query[User]
 
   private def selectUserByAccessToken(accessToken: AccessToken): ConnectionIO[Option[User]] =
     selectUserByAccessTokenQuery(accessToken).option
 
   def insertUserQuery(user: User): Update0 =
-    sql"INSERT INTO user_user(userId, name) VALUES(${user.id}, ${user.name})".update
+    sql"INSERT INTO user_user(user_id, name) VALUES(${user.id}, ${user.name})".update
 
   private def insertUser(user: User): ConnectionIO[User] =
     insertUserQuery(user).run.as(user)
 
   def invalidateAccessTokenQuery(userId: UserId): Update0 =
-    sql"DELETE FROM user_access_token WHERE userId=$userId".update
+    sql"DELETE FROM user_access_token WHERE user_id=$userId".update
 
   private def invalidateAccessToken(userId: UserId): ConnectionIO[Unit] =
     invalidateAccessTokenQuery(userId).run.void
 
   def insertAccessTokenQuery(accessToken: AccessToken, userId: UserId): Update0 =
-    sql"INSERT INTO user_access_token(accesstoken, userId) VALUES($accessToken, $userId)".update
+    sql"INSERT INTO user_access_token(access_token, user_id) VALUES($accessToken, $userId)".update
 
   private def insertAccessToken(accessToken: AccessToken, userId: UserId): ConnectionIO[AccessToken] =
     insertAccessTokenQuery(accessToken, userId).run.as(accessToken)
