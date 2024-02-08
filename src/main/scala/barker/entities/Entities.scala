@@ -67,16 +67,8 @@ final case class RichBark(
 
 /** Bark action represents a system event, sequence of which can be used as basis to construct more sophisticated data
   * snapshots
-  *
-  * TODO: can this be converted to Rust-style enum?
   */
-sealed trait BarkAction
-
-object BarkAction:
-  final case class Post(barkId: BarkId, createdAt: ZonedDateTime) extends BarkAction
-  final case class Like(barkId: BarkId, likedBy: Name, createdAt: ZonedDateTime) extends BarkAction
-  final case class Rebark(
-      rebarkFrom: BarkId,
-      rebarkTo: BarkId,
-      createdAt: ZonedDateTime
-  ) extends BarkAction
+enum BarkAction:
+  case Post(barkId: BarkId, createdAt: ZonedDateTime)
+  case Like(barkId: BarkId, likedBy: Name, createdAt: ZonedDateTime)
+  case Rebark(rebarkFrom: BarkId, rebarkTo: BarkId, createdAt: ZonedDateTime)
