@@ -11,7 +11,6 @@ import org.http4s.ember.server.*
 import org.http4s.server.Router
 import com.comcast.ip4s.*
 import caliban.*
-import caliban.interop.cats.implicits.*
 import caliban.interop.tapir.HttpInterpreter
 import caliban.schema.Schema.auto.*
 import org.typelevel.log4cats.Logger
@@ -21,7 +20,7 @@ import zio.{Runtime, ZEnvironment}
 import sttp.tapir.json.circe.*
 import pureconfig.*
 import pureconfig.generic.derivation.default.*
-import barker.schema.{*, given}
+import barker.schema.*
 import barker.services.Services
 
 final case class AppConfig(db: DBConfig) derives ConfigReader
@@ -76,11 +75,9 @@ object Main extends IOApp:
           _ <- logger.info(s"Starting Barker, running db migrations ...")
           _ <- RequestIO.liftIO(DB.runMigrations(appConfig.db))
           _ <- logger.info(s"Wiring services ...")
-          services <- RequestIO.liftIO(Services())
+          services = Services()
           _ <- logger.info(s"Building GraphQL schema ...")
-          schema = new BarkerSchema(services)
-          api = graphQL[RequestContext, barker.schema.Query, Unit, Unit](RootResolver(schema.query))
-          interpreter <- interop.toEffect(api.interpreter)
+          interpreter <- GraphQLInit.makeInterpreter(services)
         yield interpreter
 
         for

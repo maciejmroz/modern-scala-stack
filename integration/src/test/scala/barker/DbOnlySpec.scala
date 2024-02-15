@@ -8,6 +8,8 @@ import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
 import pureconfig.ConfigSource
 
+/** Test spec that gives access to Doobie transactor, and nothing else
+  */
 trait DbOnlySpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with doobie.scalatest.IOChecker:
   self: Suite =>
   lazy val dbConfig: DBConfig = ConfigSource.default.loadOrThrow[AppConfig].db
