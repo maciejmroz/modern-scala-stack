@@ -58,37 +58,40 @@ object Main extends IOApp:
   ): HttpApp[RequestIO] =
     Router("/api/graphql" -> makeGraphQLRoutes(interpreter)).orNotFound
 
+  private def init(using
+      interop: CatsInterop.Contextual[RequestIO, RequestContext]
+  ): RequestIO[GraphQLInterpreter[RequestContext, CalibanError]] =
+    for
+      _ <- logger.info(s"Starting Barker, running db migrations ...")
+      _ <- RequestIO.liftIO(DB.runMigrations(appConfig.db))
+      _ <- logger.info(s"Wiring services ...")
+      services = Services()
+      _ <- logger.info(s"Building GraphQL schema ...")
+      interpreter <- GraphQLInit.makeInterpreter(services)
+    yield interpreter
+
   def run(args: List[String]): IO[ExitCode] =
-    // needed for Caliban-CE interop
+    // needed for Caliban-CE interop (to instantiate CatsInterop.Contextual later)
     // TODO: are our IOs running on ZIO runtime now? How is this configured?
     // finally, we run on runtime provided by IOApp, right?
-    given Runtime[RequestContext] = Runtime.default.withEnvironment(ZEnvironment(RequestContext(None)))
-    given InjectEnv[RequestIO, RequestContext] = InjectEnv.kleisli
+    given runtime: Runtime[RequestContext] = Runtime.default.withEnvironment(ZEnvironment(RequestContext(None)))
+    given injector: InjectEnv[RequestIO, RequestContext] = InjectEnv.kleisli
 
-    Dispatcher
-      .parallel[RequestIO]
-      .flatMap { dispatcher =>
-        // we want to be consistent with using "given" rather than "implicit"
-        given interop: CatsInterop.Contextual[RequestIO, RequestContext] = CatsInterop.contextual(dispatcher)
+    val serverResource = for
+      dispatcher <- Dispatcher.parallel[RequestIO]
+      // CatsInterop.Contextual is FromEffect and ToEffect in one given instance. We need to explicitly pass type parameters
+      // to contextual as compiler type inference has trouble here
+      given CatsInterop.Contextual[RequestIO, RequestContext] = CatsInterop.contextual[RequestIO, RequestContext](
+        dispatcher
+      )
+      interpreter <- Resource.eval(init)
+      server <- EmberServerBuilder
+        .default[RequestIO]
+        .withHost(ipv4"0.0.0.0")
+        .withPort(port"8090")
+        .withHttpApp(makeHttpApp(interpreter))
+        .build
+    yield server
 
-        val init = for
-          _ <- logger.info(s"Starting Barker, running db migrations ...")
-          _ <- RequestIO.liftIO(DB.runMigrations(appConfig.db))
-          _ <- logger.info(s"Wiring services ...")
-          services = Services()
-          _ <- logger.info(s"Building GraphQL schema ...")
-          interpreter <- GraphQLInit.makeInterpreter(services)
-        yield interpreter
-
-        for
-          interpreter <- Resource.eval(init)
-          server <- EmberServerBuilder
-            .default[RequestIO]
-            .withHost(ipv4"0.0.0.0")
-            .withPort(port"8090")
-            .withHttpApp(makeHttpApp(interpreter))
-            .build
-        yield server
-      }
-      .useForever
+    serverResource.useForever
       .run(RequestContext(None))
