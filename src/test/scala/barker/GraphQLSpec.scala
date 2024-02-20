@@ -2,8 +2,8 @@ package barker
 
 import barker.schema.{RequestContext, RequestIO}
 import barker.services.Services
-import caliban.{CalibanError, GraphQLResponse}
 import caliban.interop.cats.{CatsInterop, InjectEnv}
+import caliban.{CalibanError, GraphQLResponse}
 import cats.effect.*
 import cats.effect.std.Dispatcher
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -15,15 +15,14 @@ import zio.{Runtime, ZEnvironment}
 /** Test spec that can run GraphQL query.
   *
   * This is where we have a bit of a downside to automatic schema derivation as we need to derive it for every single
-  * test. Doesn't matter for toy scenarios but won't scale well.
+  * test. Doesn't matter for toy scenarios but won't scale well into large schemas combined with 1000s of tests ...
   */
 trait GraphQLSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers:
   self: Suite =>
 
-  // TODO: this API makes it impossible to set up any state
-  def executeQuery(
+  def executeGraphQL(
       query: String,
-      services: IO[Services] = Services(),
+      services: Services,
       ctx: RequestContext = RequestContext(None)
   ): IO[GraphQLResponse[CalibanError]] =
     given runtime: Runtime[RequestContext] = Runtime.default.withEnvironment(ZEnvironment(RequestContext(None)))

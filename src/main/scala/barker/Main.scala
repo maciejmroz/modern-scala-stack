@@ -65,7 +65,7 @@ object Main extends IOApp:
       _ <- logger.info(s"Starting Barker, running db migrations ...")
       _ <- RequestIO.liftIO(DB.runMigrations(appConfig.db))
       _ <- logger.info(s"Wiring services ...")
-      services = Services()
+      services <- RequestIO.liftIO(Services())
       _ <- logger.info(s"Building GraphQL schema ...")
       interpreter <- GraphQLInit.makeInterpreter(services)
     yield interpreter

@@ -3,6 +3,7 @@ ThisBuild / organization := "com.maciejmroz"
 
 val http4sVersion = "0.23.19" //"1.0.0-M40"
 val doobieVersion = "1.0.0-RC5"
+val circeVersion = "0.15.0-M1"
 
 lazy val barkerDependencies = Seq(
   "org.typelevel" %% "cats-effect" % "3.5.3",
@@ -23,6 +24,10 @@ lazy val barkerDependencies = Seq(
   "com.github.pureconfig" %% "pureconfig-core" % "0.17.5",
   "org.flywaydb" % "flyway-core" % "9.16.0",
   "io.scalaland" %% "chimney" % "0.8.5",
+  "io.circe" %% "circe-core" % circeVersion,
+  "io.circe" %% "circe-generic" % circeVersion,
+  "io.circe" %% "circe-parser" % circeVersion,
+  "io.circe" %% "circe-optics" % "0.15.0",
   "org.scalatest" %% "scalatest" % "3.2.17" % Test,
   "org.typelevel" %% "cats-effect-testing-scalatest" % "1.5.0" % Test
 )
