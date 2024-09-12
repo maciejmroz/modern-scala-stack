@@ -1,6 +1,6 @@
 package barker
 
-import barker.schema.{RequestContext, RequestIO}
+import barker.schema.{AppContext, Fx}
 import barker.services.Services
 import caliban.interop.cats.{CatsInterop, InjectEnv}
 import caliban.{CalibanError, GraphQLResponse}
@@ -23,18 +23,18 @@ trait GraphQLSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers:
   def executeGraphQL(
       query: String,
       services: Services,
-      ctx: RequestContext = RequestContext(None)
+      ctx: AppContext = AppContext(None)
   ): IO[GraphQLResponse[CalibanError]] =
-    given runtime: Runtime[RequestContext] = Runtime.default.withEnvironment(ZEnvironment(RequestContext(None)))
-    given injector: InjectEnv[RequestIO, RequestContext] = InjectEnv.kleisli
+    given runtime: Runtime[AppContext] = Runtime.default.withEnvironment(ZEnvironment(AppContext(None)))
+    given injector: InjectEnv[Fx, AppContext] = InjectEnv.kleisli
 
     Dispatcher
-      .parallel[RequestIO]
+      .parallel[Fx]
       .use { dispatcher =>
-        given interop: CatsInterop.Contextual[RequestIO, RequestContext] =
-          CatsInterop.contextual[RequestIO, RequestContext](
+        given interop: CatsInterop.Contextual[Fx, AppContext] =
+          CatsInterop.contextual[Fx, AppContext](
             dispatcher
           )
-        GraphQLInit.makeInterpreter(services).flatMap(it => interop.toEffect(it.execute(query)))
+        CalibanInit.makeInterpreter(services).flatMap(it => interop.toEffect(it.execute(query)))
       }
       .run(ctx)

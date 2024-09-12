@@ -2,7 +2,7 @@ package barker.graphql
 
 import barker.GraphQLSpec
 import barker.entities.AccessToken
-import barker.schema.RequestContext
+import barker.schema.AppContext
 import barker.services.Services
 import org.scalatest.freespec.AsyncFreeSpec
 import cats.syntax.all.*
@@ -29,7 +29,7 @@ class TokenTest extends GraphQLSpec:
         // Not really used, only needed to instantiate schema
         services <- Services()
         randomToken = AccessToken.random().value
-        result <- executeGraphQL(tokenQuery, services, RequestContext(randomToken.some))
+        result <- executeGraphQL(tokenQuery, services, AppContext(randomToken.some))
       yield {
         val json = parse(result.toResponseValue.toString).getOrElse(Json.Null)
         root.data.token.string.getOption(json) shouldBe randomToken.some

@@ -1,28 +1,15 @@
-package barker
+package barker.infrastructure
 
-import doobie.*
 import cats.*
 import cats.effect.*
 import com.zaxxer.hikari.HikariConfig
+import doobie.*
 import doobie.hikari.HikariTransactor
-import org.flywaydb.core.api.Location
 import org.flywaydb.core.Flyway
-
-final case class DBConfig(
-    username: String,
-    password: String,
-    database: String,
-    host: String,
-    port: String,
-    jdbcUrl: String,
-    jdbcDriver: String,
-    maxConnections: Int,
-    migrationsTable: String,
-    migrationsLocations: List[String]
-)
+import org.flywaydb.core.api.Location
 
 object DB:
-  def transactor(dbConfig: DBConfig): Resource[IO, HikariTransactor[IO]] =
+  def transactor[F[_]: Async](dbConfig: DBConfig): Resource[F, HikariTransactor[F]] =
     for
       hikariConfig <- Resource.pure {
         val config = new HikariConfig()
@@ -33,7 +20,7 @@ object DB:
         config.setMaximumPoolSize(dbConfig.maxConnections)
         config
       }
-      xa <- HikariTransactor.fromHikariConfig[IO](hikariConfig)
+      xa <- HikariTransactor.fromHikariConfig[F](hikariConfig)
     yield xa
 
   def runMigrations(dbConfig: DBConfig): IO[Unit] =

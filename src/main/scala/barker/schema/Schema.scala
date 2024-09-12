@@ -8,21 +8,6 @@ import caliban.Value.StringValue
 import io.scalaland.chimney.dsl.*
 import barker.entities.{BarkId, UserId}
 import barker.services.Services
-import cats.data.Kleisli
-
-/** Request context is needed to pass information from HTTP request to the resolver. It forces us to use
-  * [[cats.data.Kleisli]] in the resolvers, and lifting [[cats.effect.IO]] returned from services into Kleisli. This
-  * might be somewhat unintuitive to Scala newcomers, but is not really a huge deal, and hopefully we can contain this
-  * complexity to HTTP/GraphQL wiring only.
-  */
-final case class RequestContext(accessToken: Option[String])
-type RequestIO[A] = Kleisli[IO, RequestContext, A]
-
-object RequestIO:
-  def ctx: RequestIO[RequestContext] =
-    Kleisli { (ctx: RequestContext) => IO.pure(ctx) }
-
-  def liftIO[A](io: IO[A]): RequestIO[A] = Kleisli { _ => io }
 
 /** Support for custom types
   *
@@ -50,7 +35,7 @@ given Schema[Any, BarkId] =
   */
 final case class Bark(id: BarkId, authorId: UserId, content: String)
 
-final case class Query(barks: UserId => RequestIO[List[Bark]], token: RequestIO[String])
+final case class Query(barks: UserId => Fx[List[Bark]], token: Fx[String])
 
 /** Schema object contains queries, mutations, and subscriptions for the API, as well as resolvers (these should really
   * just map domain model to API types)
@@ -58,11 +43,11 @@ final case class Query(barks: UserId => RequestIO[List[Bark]], token: RequestIO[
 class BarkerSchema(services: Services):
   // transformInto comes from chimney library which allows easy mapping between similar types
   // Quite useful and intuitive, even if using macro magic, I believe it improves readability.
-  private def listBarks(authorId: UserId): RequestIO[List[Bark]] =
-    RequestIO.liftIO(services.barkService.list(authorId).map(_.map(_.transformInto[Bark])))
+  private def listBarks(authorId: UserId): Fx[List[Bark]] =
+    Fx.liftIO(services.barkService.list(authorId).map(_.map(_.transformInto[Bark])))
 
-  private def token: RequestIO[String] =
-    for ctx <- RequestIO.ctx
+  private def token: Fx[String] =
+    for ctx <- Fx.ctx
     yield ctx.accessToken.getOrElse("whatever")
 
   lazy val query: Query =

@@ -1,5 +1,6 @@
 package barker
 
+import barker.infrastructure.DBConfig
 import cats.effect.*
 import cats.effect.testing.scalatest.AsyncIOSpec
 import doobie.Transactor

@@ -1,6 +1,7 @@
 package barker
 
-import caliban.interop.cats.{CatsInterop, InjectEnv, ToEffect}
+import barker.infrastructure.{DB, DBConfig}
+import caliban.interop.cats.{CatsInterop, InjectEnv}
 import cats.effect.*
 import cats.effect.std.Dispatcher
 import cats.data.Kleisli
@@ -11,13 +12,11 @@ import org.http4s.ember.server.*
 import org.http4s.server.Router
 import com.comcast.ip4s.*
 import caliban.*
-import caliban.interop.tapir.HttpInterpreter
 import caliban.schema.Schema.auto.*
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.ci.CIStringSyntax
 import zio.{Runtime, ZEnvironment}
-import sttp.tapir.json.circe.*
 import pureconfig.*
 import pureconfig.generic.derivation.default.*
 import barker.schema.*
@@ -26,72 +25,65 @@ import barker.services.Services
 final case class AppConfig(db: DBConfig) derives ConfigReader
 
 object Main extends IOApp:
-  given logger: Logger[RequestIO] = Slf4jLogger.getLogger[RequestIO]
+  given fxLogger: Logger[Fx] = Slf4jLogger.getLogger[Fx]
+  given ioLogger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
   private val TokenHeader = ci"X-Token"
   private val appConfig = ConfigSource.default.loadOrThrow[AppConfig]
 
   /** This is middleware that takes token from request, constructs RequestContext, and injects it into RequestIO (using
     * Kleisli.local) Original Caliban sample is using cats-mtl Local typeclass to achieve simpler notation, below it is
-    * implemented in terms of pure http4s/cats types and without using final tagless style, which still fits into single
-    * line of code.
+    * implemented in terms of pure http4s/cats types and without using final tagless style, which is still very compact.
     */
-  private def extractAccessToken(routes: HttpRoutes[RequestIO]): HttpRoutes[RequestIO] =
-    Kleisli { (req: Request[RequestIO]) =>
-      val ctx = req.headers.get(TokenHeader) match
-        case Some(tokenNel) => RequestContext(Some(tokenNel.head.value))
-        case None           => RequestContext(None)
-      OptionT(routes.run(req).value.local[RequestContext](_ => ctx))
+  private def accessTokenMiddleware(routes: HttpRoutes[Fx]): HttpRoutes[Fx] =
+    Kleisli { (req: Request[Fx]) =>
+      val at = req.headers.get(TokenHeader).map(_.head.value)
+      OptionT(routes.run(req).value.local[AppContext](_.copy(accessToken = at)))
     }
 
-  private def makeGraphQLRoutes(interpreter: GraphQLInterpreter[RequestContext, CalibanError])(using
-      ev: ToEffect[RequestIO, RequestContext]
-  ): HttpRoutes[RequestIO] =
-    extractAccessToken(
-      Http4sAdapter.makeHttpServiceF[RequestIO, RequestContext, CalibanError](HttpInterpreter(interpreter))
-    )
-
   private def makeHttpApp(
-      interpreter: GraphQLInterpreter[RequestContext, CalibanError]
-  )(using
-      ev: ToEffect[RequestIO, RequestContext]
-  ): HttpApp[RequestIO] =
-    Router("/api/graphql" -> makeGraphQLRoutes(interpreter)).orNotFound
+      graphQLRoutes: HttpRoutes[Fx]
+  ): HttpApp[Fx] =
+    Router("/api/graphql" -> accessTokenMiddleware(graphQLRoutes)).orNotFound
 
-  private def init(using
-      interop: CatsInterop.Contextual[RequestIO, RequestContext]
-  ): RequestIO[GraphQLInterpreter[RequestContext, CalibanError]] =
+  private def initServices(): Resource[IO, Services] =
     for
-      _ <- logger.info(s"Starting Barker, running db migrations ...")
-      _ <- RequestIO.liftIO(DB.runMigrations(appConfig.db))
-      _ <- logger.info(s"Wiring services ...")
-      services <- RequestIO.liftIO(Services())
-      _ <- logger.info(s"Building GraphQL schema ...")
-      interpreter <- GraphQLInit.makeInterpreter(services)
-    yield interpreter
+      transactor <- DB.transactor[IO](appConfig.db)
+      services <- Resource.eval {
+        for
+          _ <- ioLogger.info(s"Running db migrations ...")
+          _ <- DB.runMigrations(appConfig.db)
+          _ <- ioLogger.info(s"Wiring services ...")
+          services <- Services(transactor)
+        yield services
+      }
+    yield services
+
+  private def initGraphQL(services: Services, dispatcher: Dispatcher[Fx]): Fx[HttpRoutes[Fx]] =
+    // needed for Caliban-CE interop (to instantiate CatsInterop.Contextual below)
+    // TODO: are our IOs running on ZIO runtime now? How is this configured?
+    //   finally, we run on runtime provided by IOApp, right?
+    given Runtime[AppContext] = Runtime.default.withEnvironment(ZEnvironment(AppContext(None)))
+    given InjectEnv[Fx, AppContext] = InjectEnv.kleisli
+    // CatsInterop.Contextual is FromEffect and ToEffect in one given instance.
+    given CatsInterop.Contextual[Fx, AppContext] = CatsInterop.contextual[Fx, AppContext](dispatcher)
+    for
+      _ <- fxLogger.info(s"Building GraphQL schema ...")
+      interpreter <- CalibanInit.makeInterpreter(services)
+    yield CalibanInit.makeGraphQLRoutes(interpreter)
 
   def run(args: List[String]): IO[ExitCode] =
-    // needed for Caliban-CE interop (to instantiate CatsInterop.Contextual later)
-    // TODO: are our IOs running on ZIO runtime now? How is this configured?
-    // finally, we run on runtime provided by IOApp, right?
-    given runtime: Runtime[RequestContext] = Runtime.default.withEnvironment(ZEnvironment(RequestContext(None)))
-    given injector: InjectEnv[RequestIO, RequestContext] = InjectEnv.kleisli
-
     val serverResource = for
-      dispatcher <- Dispatcher.parallel[RequestIO]
-      // CatsInterop.Contextual is FromEffect and ToEffect in one given instance. We need to explicitly pass type parameters
-      // to contextual as compiler type inference has trouble here
-      given CatsInterop.Contextual[RequestIO, RequestContext] = CatsInterop.contextual[RequestIO, RequestContext](
-        dispatcher
-      )
-      interpreter <- Resource.eval(init)
+      dispatcher <- Dispatcher.parallel[Fx]
+      services <- initServices().mapK(Fx.liftK)
+      graphQLRoutes <- Resource.eval(initGraphQL(services, dispatcher))
       server <- EmberServerBuilder
-        .default[RequestIO]
+        .default[Fx]
         .withHost(ipv4"0.0.0.0")
         .withPort(port"8090")
-        .withHttpApp(makeHttpApp(interpreter))
+        .withHttpApp(makeHttpApp(graphQLRoutes))
         .build
     yield server
 
     serverResource.useForever
-      .run(RequestContext(None))
+      .run(AppContext(None))
