@@ -1,4 +1,4 @@
-package barker.infrastructure
+package barker.app
 
 import cats.effect.{ExitCode, IO, IOApp}
 import org.typelevel.log4cats.Logger

@@ -2,10 +2,10 @@ package barker.services
 
 import cats.effect.IO
 import org.scalatest.freespec.AsyncFreeSpec
-import barker.DbOnlySpec
+import barker.DbSpec
 import barker.entities.{AccessToken, Name, User, UserId}
 
-class UserServiceDBTest extends DbOnlySpec with UserServiceBehavior:
+class UserServiceDBTest extends DbSpec with UserServiceBehavior:
   "UserService" - {
     val userServiceIO = UserService(transactor)
 

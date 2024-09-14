@@ -10,8 +10,9 @@ lazy val barkerDependencies = Seq(
   "org.http4s" %% "http4s-ember-client" % http4sVersion,
   "org.http4s" %% "http4s-ember-server" % http4sVersion,
   "org.http4s" %% "http4s-dsl" % http4sVersion,
-  "org.typelevel" %% "log4cats-slf4j" % "2.6.0",
-  "org.slf4j" % "slf4j-simple" % "1.7.36",
+  "org.typelevel" %% "log4cats-core" % "2.7.0",
+  "org.typelevel" %% "log4cats-slf4j" % "2.7.0",
+  "ch.qos.logback" % "logback-classic" % "1.5.6",
   "com.github.ghostdogpr" %% "caliban" % "2.8.1",
   "com.github.ghostdogpr" %% "caliban-cats" % "2.8.1",
   "com.github.ghostdogpr" %% "caliban-http4s" % "2.8.1",
@@ -38,8 +39,9 @@ lazy val runMigrations = taskKey[Unit]("Migrates the database schema.")
 lazy val barker = project
   .in(file("."))
   .settings(
-    name := "Hello",
+    name := "Barker",
     libraryDependencies ++= barkerDependencies,
+    Compile / run / fork := true,
     fullRunTask(runMigrations, Compile, "barker.infrastructure.DBMigrationsCommand"),
     runMigrations / fork := true,
     scalacOptions ++= Seq(

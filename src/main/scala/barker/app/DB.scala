@@ -1,4 +1,4 @@
-package barker.infrastructure
+package barker.app
 
 import cats.*
 import cats.effect.*

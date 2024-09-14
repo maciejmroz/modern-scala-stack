@@ -1,4 +1,4 @@
-package barker.infrastructure
+package barker.app
 
 import pureconfig.ConfigReader
 import pureconfig.generic.derivation.default.*

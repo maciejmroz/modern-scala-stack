@@ -1,26 +1,30 @@
 # Modern Scala Stack
 
 This project is a humble attempt to reimagine Scala based GraphQL API backend if I was starting it now
-(so late 2024). It does not solve every possible problem, and is not something that's really production ready, it only
+(so late 2024). It does not solve every possible problem, and is not something that's production ready, it only
 is a reflection of what my choices for generic backend might be (given no special requirements).
 
 Overarching theme here is functional programming with effects, while also making code as simple and
 as approachable as possible.
 
-I've put several comments in the code where I believe it makes sense to do more explaining. Also,
+I've put multiple comments in the code where I believe it makes sense to do more explaining. Also,
 there are quite a few TODOs - which are not necessarily defects but point to things that may require
-more work, especially as project grows.
+more work, especially as project grows. I tried to avoid dead code but can't guarantee that you'll not find case class
+or method that's unused.
 
 ## Example app
 
 Welcome to Barker, which is like Twitter, except it's for dogs, not for birds! We are addressing
-completely new and unexplored niche for revolutionary messaging app!
+completely new and unexplored niche for revolutionary messaging app! On serious note, I just didn't want to do
+another TODO app.
 
 ## The stack
 
 Highlights:
 
-- Scala 3: I do not believe there is an excuse to start new project on 2.13 today.
+- Scala 3: I do not believe there is an excuse to start new project on 2.13 today. Yes, Scala 3 tooling leaves
+  a lot to be desired and is still much worse than for Scala 2, but I believe it reached a point of being usable, at
+  least for small projects.
 - Cats Effect: Today's Scala is functional Scala with effects running on async runtime, either in
   Typelevel or ZIO flavour. This is what really makes Scala programming a unique experience that
   brings many "wow" moments ;) Why Cats Effect and not ZIO? I have way more familiarity with CE,
@@ -34,7 +38,7 @@ Highlights:
 
 This obviously does not list every single library used, only the most major ones. Also, I stand
 firmly behind an opinion that what you do with the tech stack (both on product and process axes)
-matters a lot more than what your tech stack actually is.
+matters a lot more than what your tech stack actually is :)
 
 ## Style choices
 
@@ -48,7 +52,7 @@ much. So:
 - I generally do not use `Kleisli` for dependency injection (unless I have to, like for http4s/Caliban
   integrations), and I do not use any dependency injection framework, only traditional constructor parameter
   passing. This is an experiment I am not 100% sure of - might backtrack on this going forward.
-- Services are fixed on `IO` effect. I know some people will disagree but I believe lifting pure values
+- Services are fixed on `IO` effect. I know some people will disagree, but I believe lifting pure values
   to `IO` isn't really much different from using `Id` type parameter in testing abstract `F[_]` algebras.
   Accidentally, because at infrastructure level I am forced to use different effect type, this creates natural
   separation of system layers - maybe that's good?
@@ -84,4 +88,28 @@ There is custom `runMigrations` command available in sbt. Migrations are also ru
 Technically it is a multi-project build but only because there's separate project for integration
 tests. Standard `test` task contains only unit tests, and `integration/test` should run things like
 database tests (or whatever you need to have as dependency) - in here it is expected to have Postgres running in
-Docker container for these tests to complete. 
+Docker container for these tests to complete.
+
+## Testing
+
+A practical approach to testing pyramid I stumbled upon recently is small/medium/large approach where:
+
+- small is everything that happens in-process (that means no I/O)
+- medium is anything that happens on single machine/vm but involves multiple processes
+- large is anything that's requiring multiple dedicated machines/vms - not really a concern here
+
+Advantage of this taxonomy is focus on speed of execution and potential for flakiness. While "small" is pretty big
+superset of unit testing, it is expected that these tests will be mostly CPU bound - so very fast and easy to run
+in parallel fashion. So, while `BasicSpec` expects tests to run in `IO`, it does not expect them to actually _do_ I/O.
+Tests in this spec might for example use test doubles based on `Ref` from Cats Effect, or use other CE features. Of
+course, you can/should still do unit testing where applicable. `GraphQLSpec` allows testing GraphQL queries, which is
+useful to flag schema breakage and maybe some simple wiring problems without requiring us to spin up web server.
+
+"Medium" is when we need to talk to DB on the same host (or in general communicate with some other
+process) - these may still be relatively fast but are way, way slower than "small" tests. To avoid accidentally
+mixing different size classes, `DbSpec` is defined only in the `integration` subproject.
+
+You can find chapter on this approach
+in [Software Engineering at Google](https://www.oreilly.com/library/view/software-engineering-at/9781492082781/).
+While this book is about large engineering organization so not directly applicable to small companies or people
+doing hobby projects, it is still very well written and insightful.

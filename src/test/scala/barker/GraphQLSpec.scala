@@ -1,5 +1,6 @@
 package barker
 
+import barker.app.GraphQLRoutes
 import barker.schema.{AppContext, Fx}
 import barker.services.Services
 import caliban.interop.cats.{CatsInterop, InjectEnv}
@@ -35,6 +36,6 @@ trait GraphQLSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers:
           CatsInterop.contextual[Fx, AppContext](
             dispatcher
           )
-        CalibanInit.makeInterpreter(services).flatMap(it => interop.toEffect(it.execute(query)))
+        GraphQLRoutes.makeInterpreter(services).flatMap(it => interop.toEffect(it.execute(query)))
       }
       .run(ctx)
