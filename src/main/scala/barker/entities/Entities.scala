@@ -1,7 +1,7 @@
 package barker.entities
 
 import java.util.UUID
-import java.time.ZonedDateTime
+import java.time.{Instant, ZonedDateTime}
 
 /** Pretty much standard pattern for opaque type:
   *   - define the type itself
@@ -46,7 +46,7 @@ final case class Bark(
     authorId: UserId,
     content: String,
     rebarkFromId: Option[BarkId],
-    createdAt: ZonedDateTime,
+    createdAt: Instant,
     likes: Likes,
     rebarks: Rebarks
 )

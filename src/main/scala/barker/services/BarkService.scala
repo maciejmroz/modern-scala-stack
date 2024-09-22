@@ -1,12 +1,15 @@
 package barker.services
 
 import java.util.UUID
-import java.time.ZonedDateTime
+import java.time.Instant
 import cats.syntax.all.*
 import cats.effect.IO
 import cats.effect.kernel.Ref
-
+import doobie.{ConnectionIO, Query0, Transactor}
+import doobie.implicits.*
 import barker.entities.*
+import doobie.util.update.Update0
+import DoobieMappings.given
 
 /** Service definitions
   *
@@ -32,7 +35,7 @@ private[services] class BarkServiceRefImpl(ref: Ref[IO, Map[BarkId, Bark]]) exte
       authorId = author,
       content = content,
       rebarkFromId = None,
-      createdAt = ZonedDateTime.now(),
+      createdAt = Instant.now(),
       likes = Likes(0),
       rebarks = Rebarks(0)
     )
@@ -48,7 +51,7 @@ private[services] class BarkServiceRefImpl(ref: Ref[IO, Map[BarkId, Bark]]) exte
         authorId = author,
         content = addedContent,
         rebarkFromId = sourceBarkId.some,
-        createdAt = ZonedDateTime.now(),
+        createdAt = Instant.now(),
         likes = Likes(0),
         rebarks = Rebarks(0)
       )
@@ -66,6 +69,49 @@ private[services] class BarkServiceRefImpl(ref: Ref[IO, Map[BarkId, Bark]]) exte
 
   override def list(author: UserId): IO[List[Bark]] =
     ref.get.map(_.values.toList.sortBy(_.createdAt))
+
+private[services] class BarkServiceDbImpl(xa: Transactor[IO]) extends BarkService:
+  def insertBarkQuery(bark: Bark): Update0 =
+    sql"""INSERT INTO bark_bark(bark_id, author_id, content, rebark_from_id, created_at) 
+     VALUES(${bark.id}, ${bark.authorId}, ${bark.rebarkFromId}, ${bark.createdAt})""".update
+
+  def insertBark(bark: Bark): ConnectionIO[Bark] =
+    insertBarkQuery(bark).run.as(bark)
+
+  def selectBarkByIdQuery(barkId: BarkId): Query0[Bark] =
+    sql"SELECT bark_id, author_id, content, rebark_from_id, created_at, likes, rebarks FROM user_user WHERE bark_id=$barkId"
+      .query[Bark]
+
+  def selectBarkById(barkId: BarkId): ConnectionIO[Bark] =
+    selectBarkByIdQuery(barkId).unique
+
+  def updateBarkRebarksQuery(barkId: BarkId, rebarks: Rebarks): Update0 =
+    sql"UPDATE bark_bark SET rebarks=$rebarks WHERE id=$barkId".update
+
+  def updateBarkRebarks(barkId: BarkId, rebarks: Rebarks): ConnectionIO[Unit] =
+    updateBarkRebarksQuery(barkId, rebarks).run.void
+
+  def selectBarksByUserIdQuery(userId: UserId): Query0[Bark] =
+    sql"SELECT bark_id, author_id, content, rebark_from_id, created_at, likes, rebarks FROM user_user WHERE author_id=$userId"
+      .query[Bark]
+
+  def selectBarksByUserId(userId: UserId): ConnectionIO[List[Bark]] =
+    selectBarksByUserIdQuery(userId).to[List]
+
+  override def post(author: UserId, content: String): IO[Bark] =
+    val newBark = Bark(BarkId.random(), author, content, None, Instant.now(), Likes(0), Rebarks(0))
+    insertBark(newBark).transact(xa)
+
+  override def rebark(author: UserId, sourceBarkId: BarkId, addedContent: String): IO[Bark] =
+    (for
+      sourceBark <- selectBarkById(sourceBarkId)
+      newBark = Bark(BarkId.random(), author, addedContent, sourceBarkId.some, Instant.now(), Likes(0), Rebarks(0))
+      _ <- insertBark(newBark)
+      _ <- updateBarkRebarks(sourceBarkId, Rebarks(sourceBark.rebarks.value + 1))
+    yield newBark).transact(xa)
+
+  override def list(author: UserId): IO[List[Bark]] =
+    selectBarksByUserId(author).transact(xa)
 
 object BarkService:
   // Let's have Ref based impl for now

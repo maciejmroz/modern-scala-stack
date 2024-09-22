@@ -42,7 +42,7 @@ lazy val barker = project
     name := "Barker",
     libraryDependencies ++= barkerDependencies,
     Compile / run / fork := true,
-    fullRunTask(runMigrations, Compile, "barker.infrastructure.DBMigrationsCommand"),
+    fullRunTask(runMigrations, Compile, "barker.app.DBMigrationsCommand"),
     runMigrations / fork := true,
     scalacOptions ++= Seq(
       "-Wunused:all",
