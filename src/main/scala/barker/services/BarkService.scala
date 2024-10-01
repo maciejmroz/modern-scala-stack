@@ -73,7 +73,7 @@ private[services] class BarkServiceRefImpl(ref: Ref[IO, Map[BarkId, Bark]]) exte
 private[services] class BarkServiceDbImpl(xa: Transactor[IO]) extends BarkService:
   def insertBarkQuery(bark: Bark): Update0 =
     sql"""INSERT INTO bark_bark(bark_id, author_id, content, rebark_from_id, created_at) 
-     VALUES(${bark.id}, ${bark.authorId}, ${bark.rebarkFromId}, ${bark.createdAt})""".update
+     VALUES(${bark.id}, ${bark.authorId}, ${bark.content}, ${bark.rebarkFromId}, ${bark.createdAt})""".update
 
   def insertBark(bark: Bark): ConnectionIO[Bark] =
     insertBarkQuery(bark).run.as(bark)
@@ -118,3 +118,5 @@ object BarkService:
   // as constructing a Ref is an IO by itself, we return IO[BarkService] rather than raw value
   def apply(): IO[BarkService] =
     Ref[IO].of(Map.empty[BarkId, Bark]).map(new BarkServiceRefImpl(_))
+  def apply(transactor: Transactor[IO]): IO[BarkService] =
+    IO(new BarkServiceDbImpl(transactor))

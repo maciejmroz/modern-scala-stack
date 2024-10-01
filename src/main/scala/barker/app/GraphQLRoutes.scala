@@ -17,7 +17,7 @@ import zio.{Runtime, ZEnvironment}
 object GraphQLRoutes:
   private val logger: Logger[Fx] = Slf4jLogger.getLogger[Fx]
 
-  private def makeInterpreter(services: Services)(using
+  def makeInterpreter(services: Services)(using
       interop: CatsInterop.Contextual[Fx, AppContext]
   ): Fx[GraphQLInterpreter[AppContext, CalibanError]] =
     val schema = new BarkerSchema(services)
