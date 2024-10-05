@@ -15,8 +15,8 @@ object DoobieMappings:
   given Meta[Name] = Meta[String].timap(Name.apply)(_.value)
   given Meta[AccessToken] = Meta[String].timap(AccessToken.apply)(_.value)
   given Meta[BarkId] = Meta[UUID].timap(BarkId.apply)(_.value)
-  given Meta[Likes] = Meta[Long].timap(Likes.apply)(_.value)
-  given Meta[Rebarks] = Meta[Long].timap(Rebarks.apply)(_.value)
+  given Meta[Likes] = Meta[Int].timap(Likes.apply)(_.value)
+  given Meta[Rebarks] = Meta[Int].timap(Rebarks.apply)(_.value)
 
   /** export is another new nice thing in Scala 3 that allows us to have something like "all._" imports from Scala 2 but
     * without using object that mixes in bunch of traits.

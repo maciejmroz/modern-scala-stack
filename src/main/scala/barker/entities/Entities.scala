@@ -23,15 +23,15 @@ object Name:
 opaque type AccessToken = String
 object AccessToken extends RandomTokenCompanion[AccessToken]
 
-opaque type Likes = Long
+opaque type Likes = Int
 object Likes:
-  def apply(likes: Long): Likes = likes
-  extension (likes: Likes) def value: Long = likes
+  def apply(likes: Int): Likes = likes
+  extension (likes: Likes) def value: Int = likes
 
-opaque type Rebarks = Long
+opaque type Rebarks = Int
 object Rebarks:
-  def apply(rebarks: Long): Rebarks = rebarks
-  extension (rebarks: Rebarks) def value: Long = rebarks
+  def apply(rebarks: Int): Rebarks = rebarks
+  extension (rebarks: Rebarks) def value: Int = rebarks
 
 opaque type BarkId = UUID
 object BarkId extends UUIDCompanion[BarkId]

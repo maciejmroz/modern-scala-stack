@@ -1,0 +1,4 @@
+
+ALTER TABLE bark_bark
+    ALTER COLUMN likes SET NOT NULL,
+    ALTER COLUMN rebarks SET NOT NULL;
