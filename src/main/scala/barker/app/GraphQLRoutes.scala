@@ -21,7 +21,9 @@ object GraphQLRoutes:
       interop: CatsInterop.Contextual[Fx, AppContext]
   ): Fx[GraphQLInterpreter[AppContext, CalibanError]] =
     val schema = new BarkerSchema(services)
-    val api = graphQL[AppContext, barker.schema.Query, Unit, Unit](RootResolver(schema.query))
+    val api = graphQL[AppContext, barker.schema.Query, barker.schema.Mutation, Unit](
+      RootResolver(schema.query, schema.mutation)
+    )
     interop.toEffect(api.interpreter)
 
   def make(services: Services, dispatcher: Dispatcher[Fx]): Fx[HttpRoutes[Fx]] =

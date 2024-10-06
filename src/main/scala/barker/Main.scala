@@ -19,6 +19,7 @@ import pureconfig.*
 import pureconfig.generic.derivation.default.*
 import barker.schema.*
 import barker.services.Services
+import barker.entities.AccessToken
 
 final case class AppConfig(db: DBConfig) derives ConfigReader
 
@@ -35,7 +36,7 @@ object Main extends IOApp:
   private def accessTokenMiddleware(routes: HttpRoutes[Fx]): HttpRoutes[Fx] =
     Kleisli { (req: Request[Fx]) =>
       val at = req.headers.get(TokenHeader).map(_.head.value)
-      OptionT(routes.run(req).value.local[AppContext](_.copy(accessToken = at)))
+      OptionT(routes.run(req).value.local[AppContext](_.copy(accessToken = at.map(AccessToken.apply))))
     }
 
   private def makeHttpApp(

@@ -51,6 +51,10 @@ final case class Bark(
     rebarks: Rebarks
 )
 
+trait AppError(val errorCode: Long) extends Throwable with Product
+case object InvalidAccessToken extends AppError(1728229358)
+case object UserNotFound extends AppError(1728229501)
+
 /** Enriched version of the Bark, where entities referenced by IDs are already resolved to actual objects
   *
   * TODO: we may or may not need it ..
@@ -67,6 +71,8 @@ final case class RichBark(
 
 /** Bark action represents a system event, sequence of which can be used as basis to construct more sophisticated data
   * snapshots
+  *
+  * TODO: we may not need it, at least not in this form
   */
 enum BarkAction:
   case Post(barkId: BarkId, createdAt: ZonedDateTime)
