@@ -7,7 +7,7 @@ import caliban.schema.ArgBuilder
 import caliban.Value.StringValue
 import io.scalaland.chimney.dsl.*
 import barker.entities.{AccessToken, BarkId, InvalidAccessToken, User, UserId, UserNotFound}
-import barker.interpreters.AllInterpreters
+import barker.interpreters.Interpreters
 
 /** Support for domain types
   */
@@ -40,15 +40,15 @@ final case class Query(barks: UserId => Fx[List[Bark]], token: Fx[AccessToken])
 
 final case class Mutation(post: String => Fx[Bark])
 
-/** Schema object contains queries, mutations, and subscriptions for the API, together with resolvers. [[AllInterpreters]]
+/** Schema object contains queries, mutations, and subscriptions for the API, together with resolvers. [[Interpreters]]
   * speak [[IO]] so we want to stay inside it as long as possible. Having too much logic in here is likely a code smell
   * any way, we only want to wire existing business logic to GraphQL here.
   */
-class BarkerSchema(algebras: AllInterpreters):
+class BarkerSchema(interpreters: Interpreters):
   // transformInto comes from chimney library which allows easy mapping between similar types
   // Quite useful and intuitive, even if using macro magic, I believe it improves readability.
   private def listBarks(authorId: UserId): Fx[List[Bark]] =
-    Fx.liftIO(algebras.bark.list(authorId).map(_.map(_.transformInto[Bark])))
+    Fx.liftIO(interpreters.bark.list(authorId).map(_.map(_.transformInto[Bark])))
 
   private def token: Fx[AccessToken] =
     for ctx <- Fx.ctx
@@ -59,7 +59,7 @@ class BarkerSchema(algebras: AllInterpreters):
   private def requireUser(accessTokenOpt: Option[AccessToken]): IO[User] =
     for
       userOpt <- accessTokenOpt match
-        case Some(accessToken) => algebras.user.byAccessToken(accessToken)
+        case Some(accessToken) => interpreters.user.byAccessToken(accessToken)
         case None              => IO.raiseError(InvalidAccessToken)
       user <- userOpt match
         case Some(u) => u.pure[IO]
@@ -70,7 +70,7 @@ class BarkerSchema(algebras: AllInterpreters):
     for
       ctx <- Fx.ctx
       user <- Fx.liftIO(requireUser(ctx.accessToken))
-      newBark <- Fx.liftIO(algebras.bark.post(user.id, content))
+      newBark <- Fx.liftIO(interpreters.bark.post(user.id, content))
     yield newBark.transformInto[Bark]
 
   lazy val query: Query =

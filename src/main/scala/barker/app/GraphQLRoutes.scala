@@ -1,7 +1,7 @@
 package barker.app
 
 import barker.schema.{*, given}
-import barker.interpreters.AllInterpreters
+import barker.interpreters.Interpreters
 import caliban.*
 import caliban.interop.cats.implicits.*
 import caliban.interop.cats.{CatsInterop, InjectEnv}
@@ -17,16 +17,16 @@ import zio.{Runtime, ZEnvironment}
 object GraphQLRoutes:
   private val logger: Logger[Fx] = Slf4jLogger.getLogger[Fx]
 
-  def makeInterpreter(algebras: AllInterpreters)(using
-                                                 interop: CatsInterop.Contextual[Fx, AppContext]
+  def makeInterpreter(interpreters: Interpreters)(using
+                                                  interop: CatsInterop.Contextual[Fx, AppContext]
   ): Fx[GraphQLInterpreter[AppContext, CalibanError]] =
-    val schema = new BarkerSchema(algebras)
+    val schema = new BarkerSchema(interpreters)
     val api = graphQL[AppContext, barker.schema.Query, barker.schema.Mutation, Unit](
       RootResolver(schema.query, schema.mutation)
     )
     interop.toEffect(api.interpreter)
 
-  def make(services: AllInterpreters, dispatcher: Dispatcher[Fx]): Fx[HttpRoutes[Fx]] =
+  def make(interpreters: Interpreters, dispatcher: Dispatcher[Fx]): Fx[HttpRoutes[Fx]] =
     // ZIO runtime is needed for Caliban-CE interop (to instantiate CatsInterop.Contextual below)
     // I am not really sure what exactly runs on CE runtime and what runs in ZIO. Both runtimes create thread pools
     // each with size equal to logical CPU cores which is not optimal if there's significant work allocated to both.
@@ -37,5 +37,5 @@ object GraphQLRoutes:
 
     for
       _ <- logger.info(s"Building GraphQL schema ...")
-      interpreter <- GraphQLRoutes.makeInterpreter(services)
+      interpreter <- GraphQLRoutes.makeInterpreter(interpreters)
     yield Http4sAdapter.makeHttpServiceF[Fx, AppContext, CalibanError](HttpInterpreter(interpreter))

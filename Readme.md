@@ -78,13 +78,14 @@ Again, look for comments in the code for more specifics.
 
 ## Project structure
 
-The project is onion-ish architecture, with dependencies looking more or less like this:
+The project is onion-ish architecture, with dependencies looking more or less like this (marked by indentation):
 
 ```
-app                <- http4s (and everything else)
-  schema           <- Fx, Caliban (type mappings)
-    services       <- IO, Doobie
-      entities     <- minimal library dependencies, domain only
+app              <- http4s (and everything else)
+  schema         <- Fx, Caliban (type mappings)
+  interpreters   <- IO, Doobie
+    algebras     <- Cats Effect (IO effect)
+      entities   <- minimal library dependencies, domain only
 ```
 
 ## Building

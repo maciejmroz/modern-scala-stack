@@ -18,7 +18,7 @@ import org.typelevel.ci.CIStringSyntax
 import pureconfig.*
 import pureconfig.generic.derivation.default.*
 import barker.schema.*
-import barker.interpreters.AllInterpreters
+import barker.interpreters.Interpreters
 import barker.entities.AccessToken
 
 final case class AppConfig(db: DBConfig) derives ConfigReader
@@ -44,23 +44,23 @@ object Main extends IOApp:
   ): HttpApp[Fx] =
     Router("/api/graphql" -> accessTokenMiddleware(graphQLRoutes)).orNotFound
 
-  private def initServices(): Resource[IO, AllInterpreters] =
+  private def initInterpreters(): Resource[IO, Interpreters] =
     for
       transactor <- DB.transactor[IO](appConfig.db)
-      services <- Resource.eval {
+      interpreters <- Resource.eval {
         for
           _ <- logger.info(s"Running db migrations ...")
           _ <- DB.runMigrations(appConfig.db)
           _ <- logger.info(s"Wiring services ...")
-          services <- AllInterpreters(transactor)
-        yield services
+          interpreters <- Interpreters(transactor)
+        yield interpreters
       }
-    yield services
+    yield interpreters
 
   def run(args: List[String]): IO[ExitCode] =
     val serverResource = for
       dispatcher <- Dispatcher.parallel[Fx]
-      services <- initServices().mapK(Fx.liftK)
+      services <- initInterpreters().mapK(Fx.liftK)
       graphQLRoutes <- Resource.eval(GraphQLRoutes.make(services, dispatcher))
       server <- EmberServerBuilder
         .default[Fx]
