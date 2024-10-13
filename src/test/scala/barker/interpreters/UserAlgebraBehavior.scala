@@ -2,7 +2,6 @@ package barker.interpreters
 
 import barker.BasicSpec
 import barker.algebras.UserAlgebra
-import org.scalatest.freespec.AsyncFreeSpec
 import barker.entities.{AccessToken, Name}
 import cats.effect.IO
 
@@ -35,10 +34,3 @@ trait UserAlgebraBehavior extends BasicSpec:
         user2 shouldBe defined
         token1 should not be token2
     }
-
-class UserServiceRefTest extends BasicSpec with UserAlgebraBehavior:
-  "UserService" - {
-    val userAlgebraIO = UserAlgebraRefInterpreter()
-
-    behave like userAlgebraBehavior(userAlgebraIO)
-  }

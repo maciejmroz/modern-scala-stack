@@ -2,10 +2,9 @@ package barker.interpreters
 
 import barker.BasicSpec
 import barker.algebras.{BarkAlgebra, UserAlgebra}
-import cats.syntax.all.*
-import org.scalatest.freespec.AsyncFreeSpec
 import barker.entities.{Name, UserId}
 import cats.effect.IO
+import cats.syntax.all.*
 
 trait BarkAlgebraBehavior extends BasicSpec:
   private def loginTestUser(userAlgebra: UserAlgebra, name: Name): IO[UserId] =
@@ -37,11 +36,3 @@ trait BarkAlgebraBehavior extends BasicSpec:
         allBarks <- barksService.list(authorId2)
       yield allBarks.find(_.id == newBark.id) shouldBe newBark.some
     }
-
-class BarkServiceRefTest extends BasicSpec with BarkAlgebraBehavior:
-  "BarkService" - {
-    val userAlgebraIO = UserAlgebraRefInterpreter()
-    val barkAlgebraIO = BarkAlgebraRefInterpreter()
-
-    behave like barkAlgebraBehavior(userAlgebraIO, barkAlgebraIO)
-  }
