@@ -1,20 +1,20 @@
-package barker.services
+package barker.interpreters
 
 import cats.effect.IO
 import org.scalatest.freespec.AsyncFreeSpec
 import barker.DbSpec
 import barker.entities.{AccessToken, Name, User, UserId}
 
-class UserServiceDBTest extends DbSpec with UserServiceBehavior:
+class UserServiceDBTest extends DbSpec with UserAlgebraBehavior:
   "UserService" - {
-    val userServiceIO = UserService(transactor)
+    val userAlgebraIO = UserAlgebraDbInterpreter(transactor)
 
-    behave like userServiceBehavior(userServiceIO)
+    behave like userAlgebraBehavior(userAlgebraIO)
   }
 
   // We are using Cats Effect support trait so we need to wrap Doobie query checks in IOs
   "UserService queries type checks" - {
-    val userService = new UserServiceDbImpl(transactor)
+    val userService = new UserAlgebraDbInterpreter(transactor)
 
     "select user by name" in {
       IO(check(userService.selectUserByNameQuery(Name("Joe"))))

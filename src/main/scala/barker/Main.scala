@@ -18,7 +18,7 @@ import org.typelevel.ci.CIStringSyntax
 import pureconfig.*
 import pureconfig.generic.derivation.default.*
 import barker.schema.*
-import barker.services.Services
+import barker.interpreters.AllInterpreters
 import barker.entities.AccessToken
 
 final case class AppConfig(db: DBConfig) derives ConfigReader
@@ -44,7 +44,7 @@ object Main extends IOApp:
   ): HttpApp[Fx] =
     Router("/api/graphql" -> accessTokenMiddleware(graphQLRoutes)).orNotFound
 
-  private def initServices(): Resource[IO, Services] =
+  private def initServices(): Resource[IO, AllInterpreters] =
     for
       transactor <- DB.transactor[IO](appConfig.db)
       services <- Resource.eval {
@@ -52,7 +52,7 @@ object Main extends IOApp:
           _ <- logger.info(s"Running db migrations ...")
           _ <- DB.runMigrations(appConfig.db)
           _ <- logger.info(s"Wiring services ...")
-          services <- Services(transactor)
+          services <- AllInterpreters(transactor)
         yield services
       }
     yield services

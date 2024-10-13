@@ -7,7 +7,7 @@ import caliban.schema.ArgBuilder
 import caliban.Value.StringValue
 import io.scalaland.chimney.dsl.*
 import barker.entities.{AccessToken, BarkId, InvalidAccessToken, User, UserId, UserNotFound}
-import barker.services.Services
+import barker.interpreters.AllInterpreters
 
 /** Support for domain types
   */
@@ -40,25 +40,26 @@ final case class Query(barks: UserId => Fx[List[Bark]], token: Fx[AccessToken])
 
 final case class Mutation(post: String => Fx[Bark])
 
-/** Schema object contains queries, mutations, and subscriptions for the API, together with resolvers. [[Services]]
+/** Schema object contains queries, mutations, and subscriptions for the API, together with resolvers. [[AllInterpreters]]
   * speak [[IO]] so we want to stay inside it as long as possible. Having too much logic in here is likely a code smell
   * any way, we only want to wire existing business logic to GraphQL here.
   */
-class BarkerSchema(services: Services):
+class BarkerSchema(algebras: AllInterpreters):
   // transformInto comes from chimney library which allows easy mapping between similar types
   // Quite useful and intuitive, even if using macro magic, I believe it improves readability.
   private def listBarks(authorId: UserId): Fx[List[Bark]] =
-    Fx.liftIO(services.barkService.list(authorId).map(_.map(_.transformInto[Bark])))
+    Fx.liftIO(algebras.bark.list(authorId).map(_.map(_.transformInto[Bark])))
 
   private def token: Fx[AccessToken] =
     for ctx <- Fx.ctx
     yield ctx.accessToken.getOrElse(AccessToken("whatever"))
 
   // utility method, doesn't really belong here
+  // TODO: does it belong in domain code? how do we wire that together?
   private def requireUser(accessTokenOpt: Option[AccessToken]): IO[User] =
     for
       userOpt <- accessTokenOpt match
-        case Some(accessToken) => services.userService.byAccessToken(accessToken)
+        case Some(accessToken) => algebras.user.byAccessToken(accessToken)
         case None              => IO.raiseError(InvalidAccessToken)
       user <- userOpt match
         case Some(u) => u.pure[IO]
@@ -69,7 +70,7 @@ class BarkerSchema(services: Services):
     for
       ctx <- Fx.ctx
       user <- Fx.liftIO(requireUser(ctx.accessToken))
-      newBark <- Fx.liftIO(services.barkService.post(user.id, content))
+      newBark <- Fx.liftIO(algebras.bark.post(user.id, content))
     yield newBark.transformInto[Bark]
 
   lazy val query: Query =

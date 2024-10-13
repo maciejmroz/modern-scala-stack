@@ -1,51 +1,15 @@
-package barker.services
+package barker.interpreters
 
-import java.util.UUID
 import cats.syntax.all.*
 import cats.effect.IO
-import cats.effect.kernel.Ref
 import doobie.{ConnectionIO, Query0, Transactor}
 import doobie.implicits.*
 import barker.entities.*
 import doobie.util.update.Update0
-
 import DoobieMappings.given
+import barker.algebras.UserAlgebra
 
-/** This is not real auth in any way, we just generate access token that can be used in subsequent requests and provide
-  * a way to fetch user based on access token or user id. Just bare minimum to wire into larger system.
-  */
-trait UserService:
-  /** Creates new user if one doesn't exist. Invalidates any previous access token for the user.
-    * @return
-    *   access token
-    */
-  def login(userName: Name): IO[AccessToken]
-  def byId(userId: UserId): IO[Option[User]]
-  def byAccessToken(accessToken: AccessToken): IO[Option[User]]
-
-/** In-memory impl
-  */
-private[services] class UserServiceRefImpl(ref: Ref[IO, Map[AccessToken, User]]) extends UserService:
-
-  override def login(userName: Name): IO[AccessToken] = ref.modify { users =>
-    val newAccessToken = AccessToken(UUID.randomUUID().toString)
-    val accessTokenWithUser = users.find((_, u) => u.name == userName)
-    val usersWithAccessTokenRemoved = accessTokenWithUser.map((accessToken, _) => accessToken) match
-      case Some(at) => users - at
-      case None     => users
-    val newUser = accessTokenWithUser.map((_, user) => user).getOrElse(User(UserId(UUID.randomUUID()), userName))
-    (usersWithAccessTokenRemoved + (newAccessToken -> newUser), newAccessToken)
-  }
-
-  override def byId(userId: UserId): IO[Option[User]] =
-    ref.get.map(_.map((_, user) => user).find(_.id == userId))
-
-  /** We are optimizing for fetching by access token with other operations being implemented in most naive way possible.
-    */
-  override def byAccessToken(accessToken: AccessToken): IO[Option[User]] =
-    ref.get.map(_.get(accessToken))
-
-private[services] class UserServiceDbImpl(xa: Transactor[IO]) extends UserService:
+private[interpreters] class UserAlgebraDbInterpreter(xa: Transactor[IO]) extends UserAlgebra:
   def selectUserByNameQuery(userName: Name): Query0[User] =
     sql"SELECT user_id, name FROM user_user WHERE name=$userName"
       .query[User]
@@ -103,8 +67,6 @@ private[services] class UserServiceDbImpl(xa: Transactor[IO]) extends UserServic
   override def byAccessToken(accessToken: AccessToken): IO[Option[User]] =
     selectUserByAccessToken(accessToken).transact(xa)
 
-object UserService:
-  def apply(): IO[UserService] =
-    Ref[IO].of(Map.empty[AccessToken, User]).map(new UserServiceRefImpl(_))
-  def apply(xa: Transactor[IO]): IO[UserService] =
-    IO(new UserServiceDbImpl(xa))
+object UserAlgebraDbInterpreter:
+  def apply(xa: Transactor[IO]): IO[UserAlgebra] =
+    IO(new UserAlgebraDbInterpreter(xa))

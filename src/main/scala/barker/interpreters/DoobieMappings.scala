@@ -1,4 +1,4 @@
-package barker.services
+package barker.interpreters
 
 import barker.entities.{AccessToken, BarkId, Likes, Name, Rebarks, UserId}
 import doobie.*

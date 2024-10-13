@@ -1,24 +1,25 @@
-package barker.services
+package barker.interpreters
 
 import barker.BasicSpec
+import barker.algebras.{BarkAlgebra, UserAlgebra}
 import cats.syntax.all.*
 import org.scalatest.freespec.AsyncFreeSpec
 import barker.entities.{Name, UserId}
 import cats.effect.IO
 
-trait BarkServiceBehavior extends BasicSpec:
-  private def loginTestUser(userService: UserService, name: Name): IO[UserId] =
+trait BarkAlgebraBehavior extends BasicSpec:
+  private def loginTestUser(userAlgebra: UserAlgebra, name: Name): IO[UserId] =
     for
-      accessToken <- userService.login(name)
-      userOpt <- userService.byAccessToken(accessToken)
+      accessToken <- userAlgebra.login(name)
+      userOpt <- userAlgebra.byAccessToken(accessToken)
       userId <- userOpt.fold(IO.raiseError(new Exception("User not found")))(_.id.pure[IO])
     yield userId
 
-  def barkServiceBehavior(userServiceIO: IO[UserService], barkServiceIO: IO[BarkService]): Unit =
+  def barkAlgebraBehavior(userAlgebraIO: IO[UserAlgebra], barkAlgebraIO: IO[BarkAlgebra]): Unit =
     "allows posting and retrieving a bark" in {
       for
-        userService <- userServiceIO
-        barksService <- barkServiceIO
+        userService <- userAlgebraIO
+        barksService <- barkAlgebraIO
         authorId <- loginTestUser(userService, Name("test user"))
         bark <- barksService.post(authorId, "some content")
         allBarks <- barksService.list(authorId)
@@ -27,8 +28,8 @@ trait BarkServiceBehavior extends BasicSpec:
 
     "allows posting and rebarking a bark" in {
       for
-        userService <- userServiceIO
-        barksService <- barkServiceIO
+        userService <- userAlgebraIO
+        barksService <- barkAlgebraIO
         authorId <- loginTestUser(userService, Name("test user"))
         authorId2 <- loginTestUser(userService, Name("test user2"))
         originalBark <- barksService.post(authorId, "some content")
@@ -37,10 +38,10 @@ trait BarkServiceBehavior extends BasicSpec:
       yield allBarks.find(_.id == newBark.id) shouldBe newBark.some
     }
 
-class BarkServiceRefTest extends BasicSpec with BarkServiceBehavior:
+class BarkServiceRefTest extends BasicSpec with BarkAlgebraBehavior:
   "BarkService" - {
-    val userServiceIO = UserService()
-    val barkServiceIO = BarkService()
+    val userAlgebraIO = UserAlgebraRefInterpreter()
+    val barkAlgebraIO = BarkAlgebraRefInterpreter()
 
-    behave like barkServiceBehavior(userServiceIO, barkServiceIO)
+    behave like barkAlgebraBehavior(userAlgebraIO, barkAlgebraIO)
   }

@@ -1,22 +1,23 @@
-package barker.services
+package barker.interpreters
 
 import barker.BasicSpec
+import barker.algebras.UserAlgebra
 import org.scalatest.freespec.AsyncFreeSpec
 import barker.entities.{AccessToken, Name}
 import cats.effect.IO
 
-trait UserServiceBehavior extends BasicSpec:
-  def userServiceBehavior(userServiceIO: IO[UserService]): Unit =
+trait UserAlgebraBehavior extends BasicSpec:
+  def userAlgebraBehavior(userAlgebraIO: IO[UserAlgebra]): Unit =
     "does not return user when passed invalid token" in {
       for
-        userService <- userServiceIO
+        userService <- userAlgebraIO
         optUser <- userService.byAccessToken(AccessToken.random())
       yield optUser shouldBe None
     }
 
     "allows user to log in" in {
       for
-        userService <- userServiceIO
+        userService <- userAlgebraIO
         token <- userService.login(Name("Joe"))
         user <- userService.byAccessToken(token)
       yield user should not be empty
@@ -24,7 +25,7 @@ trait UserServiceBehavior extends BasicSpec:
 
     "invalidates old access token on login" in {
       for
-        userService <- userServiceIO
+        userService <- userAlgebraIO
         token1 <- userService.login(Name("Joe"))
         token2 <- userService.login(Name("Joe"))
         user1 <- userService.byAccessToken(token1)
@@ -35,9 +36,9 @@ trait UserServiceBehavior extends BasicSpec:
         token1 should not be token2
     }
 
-class UserServiceRefTest extends BasicSpec with UserServiceBehavior:
+class UserServiceRefTest extends BasicSpec with UserAlgebraBehavior:
   "UserService" - {
-    val userServiceIO = UserService()
+    val userAlgebraIO = UserAlgebraRefInterpreter()
 
-    behave like userServiceBehavior(userServiceIO)
+    behave like userAlgebraBehavior(userAlgebraIO)
   }

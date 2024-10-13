@@ -2,7 +2,7 @@ package barker
 
 import barker.app.GraphQLRoutes
 import barker.schema.{AppContext, Fx}
-import barker.services.Services
+import barker.interpreters.AllInterpreters
 import caliban.interop.cats.{CatsInterop, InjectEnv}
 import caliban.{CalibanError, GraphQLResponse}
 import cats.effect.*
@@ -22,9 +22,9 @@ trait GraphQLSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers:
   self: Suite =>
 
   def executeGraphQL(
-      query: String,
-      services: Services,
-      ctx: AppContext = AppContext(None)
+                      query: String,
+                      algebras: AllInterpreters,
+                      ctx: AppContext = AppContext(None)
   ): IO[GraphQLResponse[CalibanError]] =
     given runtime: Runtime[AppContext] = Runtime.default.withEnvironment(ZEnvironment(AppContext(None)))
     given injector: InjectEnv[Fx, AppContext] = InjectEnv.kleisli
@@ -36,6 +36,6 @@ trait GraphQLSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers:
           CatsInterop.contextual[Fx, AppContext](
             dispatcher
           )
-        GraphQLRoutes.makeInterpreter(services).flatMap(it => interop.toEffect(it.execute(query)))
+        GraphQLRoutes.makeInterpreter(algebras).flatMap(it => interop.toEffect(it.execute(query)))
       }
       .run(ctx)
