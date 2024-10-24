@@ -60,8 +60,8 @@ object Main extends IOApp:
   def run(args: List[String]): IO[ExitCode] =
     val serverResource = for
       dispatcher <- Dispatcher.parallel[Fx]
-      services <- initInterpreters().mapK(Fx.liftK)
-      graphQLRoutes <- Resource.eval(GraphQLRoutes.make(services, dispatcher))
+      interpreters <- initInterpreters().mapK(Fx.liftK)
+      graphQLRoutes <- Resource.eval(GraphQLRoutes.make(interpreters, dispatcher))
       server <- EmberServerBuilder
         .default[Fx]
         .withHost(ipv4"0.0.0.0")

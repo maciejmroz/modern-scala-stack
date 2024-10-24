@@ -8,6 +8,7 @@ import caliban.Value.StringValue
 import io.scalaland.chimney.dsl.*
 import barker.entities.{AccessToken, BarkId, InvalidAccessToken, User, UserId, UserNotFound}
 import barker.interpreters.Interpreters
+import barker.programs.UserProgram
 
 /** Support for domain types
   */
@@ -54,24 +55,16 @@ class BarkerSchema(interpreters: Interpreters):
     for ctx <- Fx.ctx
     yield ctx.accessToken.getOrElse(AccessToken("whatever"))
 
-  // utility method, doesn't really belong here
-  // TODO: does it belong in domain code? how do we wire that together?
-  private def requireUser(accessTokenOpt: Option[AccessToken]): IO[User] =
-    for
-      userOpt <- accessTokenOpt match
-        case Some(accessToken) => interpreters.user.byAccessToken(accessToken)
-        case None              => IO.raiseError(InvalidAccessToken)
-      user <- userOpt match
-        case Some(u) => u.pure[IO]
-        case None    => IO.raiseError(UserNotFound)
-    yield user
-
   private def postBark(content: String): Fx[Bark] =
     for
       ctx <- Fx.ctx
-      user <- Fx.liftIO(requireUser(ctx.accessToken))
-      newBark <- Fx.liftIO(interpreters.bark.post(user.id, content))
-    yield newBark.transformInto[Bark]
+      bark <- Fx.liftIO {
+        for
+          user <- UserProgram.requireUser(interpreters.user, ctx.accessToken)
+          bark <- interpreters.bark.post(user.id, content)
+        yield bark
+      }
+    yield bark.transformInto[Bark]
 
   lazy val query: Query =
     Query(barks = listBarks, token = token)

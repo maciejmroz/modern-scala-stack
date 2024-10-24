@@ -82,7 +82,7 @@ The project is onion-ish architecture, with dependencies looking more or less li
 
 ```
 app              <- http4s (and everything else)
-  schema         <- Fx, Caliban (type mappings)
+  schema         <- Fx (custom Kleisli-based effect), Caliban
   interpreters   <- IO, Doobie
     algebras     <- Cats Effect (IO effect)
       entities   <- minimal library dependencies, domain only
