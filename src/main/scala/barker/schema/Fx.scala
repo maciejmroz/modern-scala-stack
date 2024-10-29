@@ -15,6 +15,8 @@ final case class AppContext(accessToken: Option[AccessToken])
 type Fx[A] = Kleisli[IO, AppContext, A]
 
 object Fx:
+  def apply[A](run: AppContext => IO[A]): Fx[A] = Kleisli { run }
+
   def ctx: Fx[AppContext] =
     Kleisli { (ctx: AppContext) => IO.pure(ctx) }
 

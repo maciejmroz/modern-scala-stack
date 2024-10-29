@@ -8,6 +8,7 @@ import caliban.{CalibanError, GraphQLResponse}
 import cats.effect.*
 import cats.effect.std.Dispatcher
 import cats.effect.testing.scalatest.AsyncIOSpec
+import io.circe.{Json, JsonObject}
 import org.scalatest.Suite
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
@@ -22,12 +23,18 @@ trait GraphQLSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers:
   self: Suite =>
 
   def executeGraphQL(
-                      query: String,
-                      interpreters: Interpreters,
-                      ctx: AppContext = AppContext(None)
+      query: String,
+      interpreters: Interpreters,
+      variables: JsonObject = JsonObject(),
+      ctx: AppContext = AppContext(None)
   ): IO[GraphQLResponse[CalibanError]] =
     given runtime: Runtime[AppContext] = Runtime.default.withEnvironment(ZEnvironment(AppContext(None)))
     given injector: InjectEnv[Fx, AppContext] = InjectEnv.kleisli
+
+    // GraphQL query is not JSON but variables passed to it are, at least in Caliban passing empty variables object
+    // is an error if variables are not expected
+    val queryWithVariables =
+      if variables.isEmpty then query else s"$query\nvariables: ${Json.fromJsonObject(variables).spaces2}"
 
     Dispatcher
       .parallel[Fx]
@@ -36,6 +43,6 @@ trait GraphQLSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers:
           CatsInterop.contextual[Fx, AppContext](
             dispatcher
           )
-        GraphQLRoutes.makeInterpreter(interpreters).flatMap(it => interop.toEffect(it.execute(query)))
+        GraphQLRoutes.makeInterpreter(interpreters).flatMap(it => interop.toEffect(it.execute(queryWithVariables)))
       }
       .run(ctx)

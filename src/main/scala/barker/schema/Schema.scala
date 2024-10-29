@@ -6,11 +6,11 @@ import caliban.schema.Schema
 import caliban.schema.ArgBuilder
 import caliban.Value.StringValue
 import io.scalaland.chimney.dsl.*
-import barker.entities.{AccessToken, BarkId, InvalidAccessToken, User, UserId, UserNotFound}
+import barker.entities.{AccessToken, BarkId, UserId}
 import barker.interpreters.Interpreters
 import barker.programs.UserProgram
 
-/** Support for domain types
+/** Support for using domain types in GraphQL
   */
 
 //use scalarSchema to have unique type name and comment
@@ -56,15 +56,12 @@ class BarkerSchema(interpreters: Interpreters):
     yield ctx.accessToken.getOrElse(AccessToken("whatever"))
 
   private def postBark(content: String): Fx[Bark] =
-    for
-      ctx <- Fx.ctx
-      bark <- Fx.liftIO {
-        for
-          user <- UserProgram.requireUser(interpreters.user, ctx.accessToken)
-          bark <- interpreters.bark.post(user.id, content)
-        yield bark
-      }
-    yield bark.transformInto[Bark]
+    Fx { ctx =>
+      for
+        user <- UserProgram.authenticate(interpreters.user, ctx.accessToken)
+        bark <- interpreters.bark.post(user.id, content)
+      yield bark.transformInto[Bark]
+    }
 
   lazy val query: Query =
     Query(barks = listBarks, token = token)
