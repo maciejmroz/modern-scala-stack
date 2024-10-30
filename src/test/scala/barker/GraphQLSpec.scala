@@ -31,10 +31,11 @@ trait GraphQLSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers:
     given runtime: Runtime[AppContext] = Runtime.default.withEnvironment(ZEnvironment(AppContext(None)))
     given injector: InjectEnv[Fx, AppContext] = InjectEnv.kleisli
 
-    // GraphQL query is not JSON but variables passed to it are, at least in Caliban passing empty variables object
-    // is an error if variables are not expected
-    val queryWithVariables =
-      if variables.isEmpty then query else s"$query\nvariables: ${Json.fromJsonObject(variables).spaces2}"
+    // Use Circe decoder defined in Caliban to map from JsonObject to Map[String, InputValue]
+    val circeInputDecoder = caliban.InputValue.circeDecoder
+    val calibanVariables = variables.toMap
+      .map { case (str, json) => str -> circeInputDecoder.decodeJson(json) }
+      .collect { case (str, Right(i)) => str -> i }
 
     Dispatcher
       .parallel[Fx]
@@ -43,6 +44,8 @@ trait GraphQLSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers:
           CatsInterop.contextual[Fx, AppContext](
             dispatcher
           )
-        GraphQLRoutes.makeInterpreter(interpreters).flatMap(it => interop.toEffect(it.execute(queryWithVariables)))
+        GraphQLRoutes
+          .makeInterpreter(interpreters)
+          .flatMap(it => interop.toEffect(it.execute(query, variables = calibanVariables)))
       }
       .run(ctx)
