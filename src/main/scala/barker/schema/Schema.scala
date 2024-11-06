@@ -41,17 +41,19 @@ final case class Bark(id: BarkId, authorId: UserId, content: String)
   */
 final case class ListBarksInput(authorId: UserId) derives ArgBuilder
 
-final case class Query(barks: ListBarksInput => Fx[List[Bark]], token: Fx[AccessToken])
+final case class BarksQuery(list: ListBarksInput => Fx[List[Bark]])
+final case class Query(barks: BarksQuery, token: Fx[AccessToken])
 
 final case class Mutation(post: String => Fx[Bark])
 
 /** Schema object contains queries, mutations, and subscriptions for the API, together with resolvers. [[Interpreters]]
   * speak [[IO]] so we want to stay inside it as long as possible. Having too much logic in here is likely a code smell
-  * any way, we only want to wire existing business logic to GraphQL here.
+  * any way, we only want to wire existing business logic to GraphQL here. As things scale, you'll probably want to move
+  * resolvers out of the schema definition.
   */
 class BarkerSchema(interpreters: Interpreters):
   // transformInto comes from chimney library which allows easy mapping between similar types
-  // Quite useful and intuitive, even if using macro magic, I believe it improves readability.
+  // Even if using macro magic, I believe it improves readability.
   private def listBarks(input: ListBarksInput): Fx[List[Bark]] =
     Fx.liftIO(interpreters.bark.list(input.authorId).map(_.map(_.transformInto[Bark])))
 
@@ -68,7 +70,7 @@ class BarkerSchema(interpreters: Interpreters):
     }
 
   lazy val query: Query =
-    Query(barks = listBarks, token = token)
+    Query(barks = BarksQuery(listBarks), token = token)
 
   lazy val mutation: Mutation =
     Mutation(post = postBark)
