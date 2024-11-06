@@ -44,7 +44,10 @@ final case class ListBarksInput(authorId: UserId) derives ArgBuilder
 final case class BarksQuery(list: ListBarksInput => Fx[List[Bark]])
 final case class Query(barks: BarksQuery, token: Fx[AccessToken])
 
-final case class Mutation(post: String => Fx[Bark])
+final case class PostBarkInput(content: String) derives ArgBuilder
+
+final case class BarksMutation(post: PostBarkInput => Fx[Bark])
+final case class Mutation(barks: BarksMutation)
 
 /** Schema object contains queries, mutations, and subscriptions for the API, together with resolvers. [[Interpreters]]
   * speak [[IO]] so we want to stay inside it as long as possible. Having too much logic in here is likely a code smell
@@ -61,11 +64,11 @@ class BarkerSchema(interpreters: Interpreters):
     for ctx <- Fx.ctx
     yield ctx.accessToken.getOrElse(AccessToken("whatever"))
 
-  private def postBark(content: String): Fx[Bark] =
+  private def postBark(postBarkInput: PostBarkInput): Fx[Bark] =
     Fx { ctx =>
       for
         user <- UserProgram.authenticate(interpreters.user, ctx.accessToken)
-        bark <- interpreters.bark.post(user.id, content)
+        bark <- interpreters.bark.post(user.id, postBarkInput.content)
       yield bark.transformInto[Bark]
     }
 
@@ -73,4 +76,4 @@ class BarkerSchema(interpreters: Interpreters):
     Query(barks = BarksQuery(listBarks), token = token)
 
   lazy val mutation: Mutation =
-    Mutation(post = postBark)
+    Mutation(barks = BarksMutation(postBark))
