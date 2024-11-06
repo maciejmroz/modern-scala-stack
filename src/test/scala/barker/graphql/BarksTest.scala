@@ -9,7 +9,7 @@ import io.circe.*
 import io.circe.syntax.*
 import cats.syntax.all.*
 
-import barker.schema.CirceSupport.given
+import barker.app.CirceSupport.given
 
 /** For GraphQL testing we mostly focus on schema being what we expect, and perhaps that wiring of schema to business
   * logic makes sense. Actual interpreters should be tested in independently so there isn't much point in indirectly

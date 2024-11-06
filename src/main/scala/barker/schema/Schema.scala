@@ -42,6 +42,10 @@ final case class Bark(id: BarkId, authorId: UserId, content: String)
 final case class ListBarksInput(authorId: UserId) derives ArgBuilder
 
 final case class BarksQuery(list: ListBarksInput => Fx[List[Bark]])
+
+/** Main query object. 'token' query is not related to anything in the domain, it is just meant to validate that access
+  * token is read correctly and available to GraphQL resolvers (which is useful as a sanity check)
+  */
 final case class Query(barks: BarksQuery, token: Fx[AccessToken])
 
 final case class PostBarkInput(content: String) derives ArgBuilder
@@ -53,16 +57,19 @@ final case class Mutation(barks: BarksMutation)
   * speak [[IO]] so we want to stay inside it as long as possible. Having too much logic in here is likely a code smell
   * any way, we only want to wire existing business logic to GraphQL here. As things scale, you'll probably want to move
   * resolvers out of the schema definition.
+  *
+  * TODO: user queries and mutations
   */
 class BarkerSchema(interpreters: Interpreters):
+  // this is resolver for token query which is not really related to anything
+  private def token: Fx[AccessToken] =
+    for ctx <- Fx.ctx
+    yield ctx.accessToken.getOrElse(AccessToken("whatever"))
+
   // transformInto comes from chimney library which allows easy mapping between similar types
   // Even if using macro magic, I believe it improves readability.
   private def listBarks(input: ListBarksInput): Fx[List[Bark]] =
     Fx.liftIO(interpreters.bark.list(input.authorId).map(_.map(_.transformInto[Bark])))
-
-  private def token: Fx[AccessToken] =
-    for ctx <- Fx.ctx
-    yield ctx.accessToken.getOrElse(AccessToken("whatever"))
 
   private def postBark(postBarkInput: PostBarkInput): Fx[Bark] =
     Fx { ctx =>

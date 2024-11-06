@@ -1,12 +1,13 @@
-package barker.schema
+package barker.app
 
-import io.circe.{Codec, HCursor, Json}
 import barker.entities.{From, Into}
 import io.circe.Decoder.Result
+import io.circe.{Codec, HCursor, Json}
+
 import java.util.UUID
 
-/** Circe codecs for basic domain types - might want to move it elsewhere in future, just did not want dependency on
-  * Circe in domain code, as JSON encoding/decoding is more of an infrastructure thing
+/** Circe codecs for basic domain types - JSON encoding/decoding is more of an infrastructure thing, although it is
+  * functionality so basic it might very well reside somewhere together with core entities.
   */
 object CirceSupport:
   private type FromUUID[T] = From[UUID, T]
