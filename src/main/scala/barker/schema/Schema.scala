@@ -37,7 +37,11 @@ given Schema[Any, AccessToken] =
   */
 final case class Bark(id: BarkId, authorId: UserId, content: String)
 
-final case class Query(barks: UserId => Fx[List[Bark]], token: Fx[AccessToken])
+/** We always need an input case class for queries/mutations so that parameter names used in schema can be inferred
+  */
+final case class ListBarksInput(authorId: UserId) derives ArgBuilder
+
+final case class Query(barks: ListBarksInput => Fx[List[Bark]], token: Fx[AccessToken])
 
 final case class Mutation(post: String => Fx[Bark])
 
@@ -48,8 +52,8 @@ final case class Mutation(post: String => Fx[Bark])
 class BarkerSchema(interpreters: Interpreters):
   // transformInto comes from chimney library which allows easy mapping between similar types
   // Quite useful and intuitive, even if using macro magic, I believe it improves readability.
-  private def listBarks(authorId: UserId): Fx[List[Bark]] =
-    Fx.liftIO(interpreters.bark.list(authorId).map(_.map(_.transformInto[Bark])))
+  private def listBarks(input: ListBarksInput): Fx[List[Bark]] =
+    Fx.liftIO(interpreters.bark.list(input.authorId).map(_.map(_.transformInto[Bark])))
 
   private def token: Fx[AccessToken] =
     for ctx <- Fx.ctx

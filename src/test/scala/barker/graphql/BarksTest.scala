@@ -19,7 +19,7 @@ class BarksTest extends GraphQLSpec:
   val listQuery: String =
     """
       |query ListBarks($authorId: AuthorId!) {
-      |  list(authorId: $authorId) {
+      |  barks(authorId: $authorId) {
       |    id
       |    authorId
       |    content

@@ -8,6 +8,7 @@ import caliban.{CalibanError, GraphQLResponse}
 import cats.effect.*
 import cats.effect.std.Dispatcher
 import cats.effect.testing.scalatest.AsyncIOSpec
+import cats.syntax.all.*
 import io.circe.{Json, JsonObject}
 import org.scalatest.Suite
 import org.scalatest.freespec.AsyncFreeSpec
@@ -49,3 +50,7 @@ trait GraphQLSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers:
           .flatMap(it => interop.toEffect(it.execute(query, variables = calibanVariables)))
       }
       .run(ctx)
+      .flatMap {
+        case r @ GraphQLResponse(_, Nil, _, _)    => r.pure[IO]
+        case GraphQLResponse(_, error :: _, _, _) => IO.raiseError[GraphQLResponse[CalibanError]](error) // in tests, it's enough we fail here
+      }
