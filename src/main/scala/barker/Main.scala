@@ -1,6 +1,6 @@
 package barker
 
-import barker.app.{DB, DBConfig, GraphQLRoutes}
+import barker.app.{AppConfig, DB, GraphQLRoutes}
 import cats.effect.*
 import cats.effect.std.Dispatcher
 import cats.data.Kleisli
@@ -14,20 +14,17 @@ import caliban.*
 import caliban.schema.Schema.auto.*
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import org.typelevel.ci.CIStringSyntax
+import org.typelevel.ci.CIString
 import pureconfig.*
-import pureconfig.generic.derivation.default.*
 import barker.schema.*
 import barker.interpreters.Interpreters
 import barker.entities.AccessToken
 
-final case class AppConfig(db: DBConfig) derives ConfigReader
-
 object Main extends IOApp:
   private val logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
-  private val TokenHeader = ci"X-Token"
   private val appConfig = ConfigSource.default.loadOrThrow[AppConfig]
+  private val TokenHeader = CIString(appConfig.http.header)
 
   /** This is middleware that takes token from request, constructs RequestContext, and injects it into RequestIO (using
     * Kleisli.local) Original Caliban sample is using cats-mtl Local typeclass to achieve simpler notation, below it is
@@ -64,8 +61,8 @@ object Main extends IOApp:
       graphQLRoutes <- Resource.eval(GraphQLRoutes.make(interpreters, dispatcher))
       server <- EmberServerBuilder
         .default[Fx]
-        .withHost(ipv4"0.0.0.0")
-        .withPort(port"8090")
+        .withHost(Host.fromString(appConfig.http.host).get)
+        .withPort(Port.fromInt(appConfig.http.port).get)
         .withHttpApp(makeHttpApp(graphQLRoutes))
         .build
     yield server

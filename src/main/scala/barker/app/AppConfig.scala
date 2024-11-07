@@ -15,3 +15,11 @@ final case class DBConfig(
     migrationsTable: String,
     migrationsLocations: List[String]
 ) derives ConfigReader
+
+final case class HTTPConfig(
+    host: String,
+    port: Int,
+    header: String
+) derives ConfigReader
+
+final case class AppConfig(db: DBConfig, http: HTTPConfig) derives ConfigReader
