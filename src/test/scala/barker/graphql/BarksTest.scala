@@ -43,6 +43,19 @@ class BarksTest extends GraphQLSpec:
       |}
       |""".stripMargin
 
+  val rebarkMutation: String =
+    """
+      |mutation RebarkBark($sourceBarkId: BarkId!, $addedContent: String!) {
+      |  barks {
+      |    rebark(sourceBarkId: $sourceBarkId, addedContent: $addedContent) {
+      |      id
+      |      authorId
+      |      content
+      |    }
+      |  }
+      |}
+      |""".stripMargin
+
   "Barks GQL" - {
     "should be possible to call 'list' query" in {
       for
@@ -66,7 +79,23 @@ class BarksTest extends GraphQLSpec:
           JsonObject("content" -> "test content".asJson),
           AppContext(accessToken.some)
         )
-      yield () // we don't really expect a result here
+      yield ()
+    }
+
+    "should be possible to call 'rebark' mutation" in {
+      for
+        interpreters <- Interpreters()
+        accessToken <- interpreters.user.login(Name("test user"))
+        user <- interpreters.user.byAccessToken(accessToken)
+        sourceBark <- interpreters.bark.post(user.get.id, "test content")
+        // ok technically we are reposting our own content which should not be possible, but it's not a real app :)
+        _ <- executeGraphQL(
+          rebarkMutation,
+          interpreters,
+          JsonObject("sourceBarkId" -> sourceBark.id.asJson, "addedContent" -> "test added content".asJson),
+          AppContext(accessToken.some)
+        )
+      yield ()
     }
 
   }

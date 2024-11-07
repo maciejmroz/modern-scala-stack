@@ -23,6 +23,7 @@ given ArgBuilder[UserId] = ArgBuilder.uuid.map(UserId.apply)
 given Schema[Any, BarkId] =
   Schema
     .scalarSchema[BarkId]("BarkId", "Unique ID".some, None, None, x => StringValue(x.value.toString))
+given ArgBuilder[BarkId] = ArgBuilder.uuid.map(BarkId.apply)
 
 given Schema[Any, AccessToken] =
   Schema
@@ -49,8 +50,12 @@ final case class BarksQuery(list: ListBarksInput => Fx[List[Bark]])
 final case class Query(barks: BarksQuery, token: Fx[AccessToken])
 
 final case class PostBarkInput(content: String) derives ArgBuilder
+final case class RebarkInput(sourceBarkId: BarkId, addedContent: Option[String]) derives ArgBuilder
 
-final case class BarksMutation(post: PostBarkInput => Fx[Bark])
+final case class BarksMutation(post: PostBarkInput => Fx[Bark], rebark: RebarkInput => Fx[Bark])
+
+/** Main mutation object for the schema
+  */
 final case class Mutation(barks: BarksMutation)
 
 /** Schema object contains queries, mutations, and subscriptions for the API, together with resolvers. [[Interpreters]]
@@ -72,15 +77,21 @@ class BarkerSchema(interpreters: Interpreters):
     Fx.liftIO(interpreters.bark.list(input.authorId).map(_.map(_.transformInto[Bark])))
 
   private def postBark(postBarkInput: PostBarkInput): Fx[Bark] =
-    Fx { ctx =>
+    Fx: ctx =>
       for
         user <- UserProgram.authenticate(interpreters.user, ctx.accessToken)
         bark <- interpreters.bark.post(user.id, postBarkInput.content)
       yield bark.transformInto[Bark]
-    }
+
+  private def rebarkBark(rebarkInput: RebarkInput): Fx[Bark] =
+    Fx: ctx =>
+      for
+        user <- UserProgram.authenticate(interpreters.user, ctx.accessToken)
+        bark <- interpreters.bark.rebark(user.id, rebarkInput.sourceBarkId, rebarkInput.addedContent.getOrElse(""))
+      yield bark.transformInto[Bark]
 
   lazy val query: Query =
     Query(barks = BarksQuery(listBarks), token = token)
 
   lazy val mutation: Mutation =
-    Mutation(barks = BarksMutation(postBark))
+    Mutation(barks = BarksMutation(post = postBark, rebark = rebarkBark))
