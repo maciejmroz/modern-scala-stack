@@ -1,6 +1,7 @@
 package barker.interpreters
 
 import java.time.Instant
+import cats.MonadThrow
 import cats.syntax.all.*
 import cats.effect.IO
 import doobie.{ConnectionIO, Query0, Transactor}
@@ -17,27 +18,30 @@ private[interpreters] class BarkAlgebraDbInterpreter(xa: Transactor[IO]) extends
     sql"""INSERT INTO bark_bark(bark_id, author_id, content, rebark_from_id, created_at) 
      VALUES(${bark.id}, ${bark.authorId}, ${bark.content}, ${bark.rebarkFromId}, ${bark.createdAt})""".update
 
-  def insertBark(bark: Bark): ConnectionIO[Bark] =
+  private def insertBark(bark: Bark): ConnectionIO[Bark] =
     insertBarkQuery(bark).run.as(bark)
 
   def selectBarkByIdQuery(barkId: BarkId): Query0[Bark] =
     sql"SELECT bark_id, author_id, content, rebark_from_id, created_at, likes, rebarks FROM bark_bark WHERE bark_id=$barkId"
       .query[Bark]
 
-  def selectBarkById(barkId: BarkId): ConnectionIO[Bark] =
-    selectBarkByIdQuery(barkId).unique
+  // TODO: utility going from F[Option[A]] to F[A] with possibly failed F
+  private def selectBarkById(barkId: BarkId): ConnectionIO[Bark] =
+    selectBarkByIdQuery(barkId).option.flatMap(
+      _.fold(MonadThrow[ConnectionIO].raiseError[Bark](BarkNotFound))(_.pure[ConnectionIO])
+    )
 
   def updateBarkRebarksQuery(barkId: BarkId, rebarks: Rebarks): Update0 =
     sql"UPDATE bark_bark SET rebarks=$rebarks WHERE bark_id=$barkId".update
 
-  def updateBarkRebarks(barkId: BarkId, rebarks: Rebarks): ConnectionIO[Unit] =
+  private def updateBarkRebarks(barkId: BarkId, rebarks: Rebarks): ConnectionIO[Unit] =
     updateBarkRebarksQuery(barkId, rebarks).run.void
 
   def selectBarksByUserIdQuery(userId: UserId): Query0[Bark] =
     sql"SELECT bark_id, author_id, content, rebark_from_id, created_at, likes, rebarks FROM bark_bark WHERE author_id=$userId"
       .query[Bark]
 
-  def selectBarksByUserId(userId: UserId): ConnectionIO[List[Bark]] =
+  private def selectBarksByUserId(userId: UserId): ConnectionIO[List[Bark]] =
     selectBarksByUserIdQuery(userId).to[List]
 
   override def post(author: UserId, content: String): IO[Bark] =

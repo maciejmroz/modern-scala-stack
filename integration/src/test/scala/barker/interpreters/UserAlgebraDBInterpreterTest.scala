@@ -5,7 +5,7 @@ import org.scalatest.freespec.AsyncFreeSpec
 import barker.DbSpec
 import barker.entities.{AccessToken, Name, User, UserId}
 
-class UserServiceDBTest extends DbSpec with UserAlgebraBehavior:
+class UserAlgebraDBInterpreterTest extends DbSpec with UserAlgebraBehavior:
   "UserService" - {
     val userAlgebraIO = UserAlgebraDbInterpreter(transactor)
 

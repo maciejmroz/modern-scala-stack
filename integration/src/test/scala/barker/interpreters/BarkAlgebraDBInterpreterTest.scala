@@ -8,7 +8,7 @@ import barker.entities.{AccessToken, Bark, BarkId, Likes, Name, Rebarks, User, U
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-class BarkServiceDBTest extends DbSpec with BarkAlgebraBehavior:
+class BarkAlgebraDBInterpreterTest extends DbSpec with BarkAlgebraBehavior:
   "BarkAlgebra" - {
     val userAlgebraIO = UserAlgebraDbInterpreter(transactor)
     val barkAlgebraIO = BarkAlgebraDbInterpreter(transactor)

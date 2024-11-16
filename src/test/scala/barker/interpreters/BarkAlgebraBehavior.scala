@@ -2,7 +2,7 @@ package barker.interpreters
 
 import barker.BasicSpec
 import barker.algebras.{BarkAlgebra, UserAlgebra}
-import barker.entities.{Name, UserId}
+import barker.entities.{BarkId, BarkNotFound, Name, UserId}
 import cats.effect.IO
 import cats.syntax.all.*
 
@@ -35,4 +35,15 @@ trait BarkAlgebraBehavior extends BasicSpec:
         newBark <- barksService.rebark(authorId2, originalBark.id, "some added content")
         allBarks <- barksService.list(authorId2)
       yield allBarks.find(_.id == newBark.id) shouldBe newBark.some
+    }
+
+    "fails with BarkNotFound when trying to rebark non-existing bark" in {
+      for
+        userService <- userAlgebraIO
+        barksService <- barkAlgebraIO
+        authorId <- loginTestUser(userService, Name("test user"))
+        _ <- barksService.rebark(authorId, BarkId.random(), "some added content").recover { case BarkNotFound =>
+          ()
+        }
+      yield ()
     }

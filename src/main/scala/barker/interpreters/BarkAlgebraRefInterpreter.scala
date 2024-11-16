@@ -1,7 +1,7 @@
 package barker.interpreters
 
 import barker.algebras.BarkAlgebra
-import barker.entities.{Bark, BarkId, Likes, Rebarks, UserId}
+import barker.entities.{Bark, BarkId, BarkNotFound, Likes, Rebarks, UserId}
 import cats.effect.IO
 import cats.effect.kernel.Ref
 import cats.syntax.all.*
@@ -29,7 +29,7 @@ private[interpreters] class BarkAlgebraRefInterpreter(ref: Ref[IO, Map[BarkId, B
     for
       barks <- ref.get
       sourceOpt = barks.get(sourceBarkId)
-      _ <- sourceOpt.fold(IO.raiseError[Unit](Throwable("Source bark not found")))(_ => IO.unit)
+      _ <- sourceOpt.fold(IO.raiseError[Unit](BarkNotFound))(_ => IO.unit)
       newBark = Bark(
         id = BarkId(UUID.randomUUID()),
         authorId = author,

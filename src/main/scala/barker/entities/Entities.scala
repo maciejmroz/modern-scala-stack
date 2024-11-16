@@ -1,7 +1,7 @@
 package barker.entities
 
 import java.util.UUID
-import java.time.{Instant, ZonedDateTime}
+import java.time.Instant
 
 /** Pretty much standard pattern for opaque type:
   *   - define the type itself
@@ -54,27 +54,4 @@ final case class Bark(
 trait AppError(val errorCode: Long) extends Throwable with Product
 case object InvalidAccessToken extends AppError(1728229358)
 case object UserNotFound extends AppError(1728229501)
-
-/** Enriched version of the Bark, where entities referenced by IDs are already resolved to actual objects
-  *
-  * TODO: we may or may not need it ..
-  */
-final case class RichBark(
-    id: BarkId,
-    author: User,
-    content: String,
-    rebarkFrom: Option[Bark],
-    createdAt: ZonedDateTime,
-    likes: Likes,
-    rebarks: Rebarks
-)
-
-/** Bark action represents a system event, sequence of which can be used as basis to construct more sophisticated data
-  * snapshots
-  *
-  * TODO: we may not need it, at least not in this form
-  */
-enum BarkAction:
-  case Post(barkId: BarkId, createdAt: ZonedDateTime)
-  case Like(barkId: BarkId, likedBy: Name, createdAt: ZonedDateTime)
-  case Rebark(rebarkFrom: BarkId, rebarkTo: BarkId, createdAt: ZonedDateTime)
+case object BarkNotFound extends AppError(1731792724)
