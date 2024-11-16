@@ -6,7 +6,7 @@ import caliban.schema.Schema
 import caliban.schema.ArgBuilder
 import caliban.Value.StringValue
 import io.scalaland.chimney.dsl.*
-import barker.entities.{AccessToken, BarkId, UserId}
+import barker.entities.{AccessToken, BarkId, Name, UserId}
 import barker.interpreters.Interpreters
 import barker.programs.UserProgram
 
@@ -17,7 +17,7 @@ import barker.programs.UserProgram
 given Schema[Any, UserId] =
   Schema
     .scalarSchema[UserId]("AuthorId", "Unique ID".some, None, None, x => StringValue(x.value.toString))
-//for parameters we can reuse ArgBuilder for UUID
+//for parameters, we can reuse ArgBuilder for UUID
 given ArgBuilder[UserId] = ArgBuilder.uuid.map(UserId.apply)
 
 given Schema[Any, BarkId] =
@@ -28,6 +28,11 @@ given ArgBuilder[BarkId] = ArgBuilder.uuid.map(BarkId.apply)
 given Schema[Any, AccessToken] =
   Schema
     .scalarSchema[AccessToken]("AccessToken", "Unique ID".some, None, None, x => StringValue(x.value))
+
+given Schema[Any, Name] =
+  Schema
+    .scalarSchema[Name]("Name", "User name".some, None, None, x => StringValue(x.value))
+given ArgBuilder[Name] = ArgBuilder.string.map(Name.apply)
 
 /** Actual GraphQL schema definition starts here
   *
@@ -44,10 +49,13 @@ final case class ListBarksInput(authorId: UserId) derives ArgBuilder
 
 final case class BarksQuery(list: ListBarksInput => Fx[List[Bark]])
 
-/** Main query object. 'token' query is not related to anything in the domain, it is just meant to validate that access
-  * token is read correctly and available to GraphQL resolvers (which is useful as a sanity check)
+/** Top level query object. 'token' query is not related to anything in the domain, it is just meant to validate that
+  * access token is read correctly and available to GraphQL resolvers (which is useful as a sanity check)
   */
 final case class Query(barks: BarksQuery, token: Fx[AccessToken])
+
+final case class LoginInput(userName: Name) derives ArgBuilder
+final case class UserMutation(login: LoginInput => Fx[AccessToken])
 
 final case class PostBarkInput(content: String) derives ArgBuilder
 final case class RebarkInput(sourceBarkId: BarkId, addedContent: Option[String]) derives ArgBuilder
@@ -56,14 +64,12 @@ final case class BarksMutation(post: PostBarkInput => Fx[Bark], rebark: RebarkIn
 
 /** Main mutation object for the schema
   */
-final case class Mutation(barks: BarksMutation)
+final case class Mutation(user: UserMutation, barks: BarksMutation)
 
 /** Schema object contains queries, mutations, and subscriptions for the API, together with resolvers. [[Interpreters]]
   * speak [[IO]] so we want to stay inside it as long as possible. Having too much logic in here is likely a code smell
-  * any way, we only want to wire existing business logic to GraphQL here. As things scale, you'll probably want to move
-  * resolvers out of the schema definition.
-  *
-  * TODO: user queries and mutations
+  * any way, we only want to wire existing business logic to GraphQL here. As things scale, you'll probably want to
+  * split the schema up (and not keep all resolvers in the same place).
   */
 class BarkerSchema(interpreters: Interpreters):
   // this is resolver for token query which is not really related to anything
@@ -90,8 +96,11 @@ class BarkerSchema(interpreters: Interpreters):
         bark <- interpreters.bark.rebark(user.id, rebarkInput.sourceBarkId, rebarkInput.addedContent.getOrElse(""))
       yield bark.transformInto[Bark]
 
+  private def userLogin(loginInput: LoginInput): Fx[AccessToken] =
+    Fx.liftIO(interpreters.user.login(loginInput.userName))
+
   lazy val query: Query =
     Query(barks = BarksQuery(listBarks), token = token)
 
   lazy val mutation: Mutation =
-    Mutation(barks = BarksMutation(post = postBark, rebark = rebarkBark))
+    Mutation(user = UserMutation(login = userLogin), barks = BarksMutation(post = postBark, rebark = rebarkBark))
