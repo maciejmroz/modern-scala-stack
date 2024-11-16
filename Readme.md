@@ -14,6 +14,9 @@ there are quite a few TODOs - which are not necessarily defects but point to thi
 more work, especially if the project grows. I tried to avoid dead code but can't guarantee that you'll not find
 case class or method that's unused.
 
+It is a toy project, with no real goal nor a clearly defined scope. I might continue adding functionalities to it, or
+might just move on to something else :)
+
 ## Example app
 
 Welcome to Barker, which is like Twitter, except it's for dogs, not for birds! We are addressing
@@ -50,18 +53,19 @@ This obviously does not list every single library used, only the most major ones
 The project is onion-ish architecture, with dependencies looking more or less like this (marked by indentation):
 
 ```
-app                <- http4s (and everything else)
-  schema           <- Fx (custom Kleisli-based effect), Caliban
-  interpreters     <- IO, Doobie
-    programs       
-      algebras     <- Cats Effect (IO effect)
+app                <- HTTP (and everything else)
+  schema           <- GraphQL schema
+  interpreters     <- implementations for algebras (both in memory and db backed)
+    programs       <- domain logic
+      algebras     <- interfaces required by domain logic (using Cats Effect IO)
         entities   <- minimal library dependencies, domain only
 ```
 
-`programs`, `algebras` and `entities` together create core domain model. While having `IO` dependency at this level is
-somewhat dangerous it is also quite pragmatic, especially for a small project. Even in simple real world app, you will
-need to model some of the capabilities provided by `IO` (one way or another) and for simple project well ... just use
-`IO` directly without any abstractions and don't worry too much.
+`programs`, `algebras` and `entities` together create application domain and this is where most complex logic is
+expected to exist. While having `IO` dependency at this level is somewhat dangerous it is also a pragmatic choice,
+especially for a small project. Even in simple real world app, you would need to model some of the capabilities
+provided by `IO` (one way or another) and for simple project well ... just use `IO` directly without any abstractions
+and don't worry too much.
 
 `interpreters` provide actual implementation of algebras for programs to use.
 
@@ -123,21 +127,19 @@ much. So:
 - I do not use `Kleisli` for dependency injection unless I have to (like for http4s/Caliban
   integrations), and I do not use any dependency injection framework, only traditional constructor parameter
   passing. This is an experiment I am not 100% sure of - might backtrack on this going forward.
-- Going with the theme of concrete effect types, services are fixed on `IO` effect, as this is the "common ground"
+- Going with the theme of concrete effect types, algebras are fixed on `IO` effect, as this is the "common ground"
   for all CE apps and requires no explaining to anyone. Should anyone ever want to extend this layer of the system,
   they can just do so based on whatever they _already_ know, with zero surprises. And for testing, lifting pure values
   to `IO` isn't really much different from using `Id` type parameter in testing abstract `F[_]` algebras.
   At infrastructure/app level there's `Fx` effect type, which really is a `Kleisli` - I guess not something that
   can easily be avoided. This creates natural separation of system layers - maybe that's good? Alternate design
-  would be to just use tagless final all the way, extend environment type to include services, and privide
-  typeclasses to access the environment (maybe even just use `Ask` from cats-mtl). This might be cleaner if you
-  look through functional programming lens (and maybe even objectively better) but I believe it would also be
-  harder to get into, unless you come to scala from Haskell.
+  would be to just use tagless final all the way, extend environment type to include concrete algebra implementations,
+  and provide typeclasses to access the environment (maybe even just use `Ask` from cats-mtl). This might be cleaner if
+  you look through functional programming lens (and maybe even objectively better) but I believe it would also be
+  harder to get into, unless you are a Scala/FP veteran.
 - I absolutely _do_ use macro-based capabilities of libraries like Caliban and intend to use it
   in cases where I believe it to be improvement to productivity and/or readability. Other example (although a smaller
   one) is excellent chimney library for transforming data types.
 - The syntax used is new Python-esque Scala syntax, with scalafmt set up to rewrite into this syntax. This is an
   experiment at reducing visual noise, which is an aspect of Python I really like (this also applies to Haskell, which
   is likely a better analogy in FP context any way;) ).
-
-Again, look for comments in the code for more specifics.
