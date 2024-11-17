@@ -10,6 +10,7 @@ import barker.entities.*
 import doobie.util.update.Update0
 import DoobieMappings.given
 import barker.algebras.BarkAlgebra
+import barker.utilities.*
 
 import java.time.temporal.ChronoUnit
 
@@ -25,11 +26,8 @@ private[interpreters] class BarkAlgebraDbInterpreter(xa: Transactor[IO]) extends
     sql"SELECT bark_id, author_id, content, rebark_from_id, created_at, likes, rebarks FROM bark_bark WHERE bark_id=$barkId"
       .query[Bark]
 
-  // TODO: utility going from F[Option[A]] to F[A] with possibly failed F
   private def selectBarkById(barkId: BarkId): ConnectionIO[Bark] =
-    selectBarkByIdQuery(barkId).option.flatMap(
-      _.fold(MonadThrow[ConnectionIO].raiseError[Bark](BarkNotFound))(_.pure[ConnectionIO])
-    )
+    selectBarkByIdQuery(barkId).option.getOrFailWith(BarkNotFound)
 
   def updateBarkRebarksQuery(barkId: BarkId, rebarks: Rebarks): Update0 =
     sql"UPDATE bark_bark SET rebarks=$rebarks WHERE bark_id=$barkId".update

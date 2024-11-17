@@ -3,6 +3,7 @@ package barker.interpreters
 import barker.BasicSpec
 import barker.algebras.{BarkAlgebra, UserAlgebra}
 import barker.entities.{BarkId, BarkNotFound, Name, UserId}
+import barker.utilities.*
 import cats.effect.IO
 import cats.syntax.all.*
 
@@ -42,8 +43,6 @@ trait BarkAlgebraBehavior extends BasicSpec:
         userService <- userAlgebraIO
         barksService <- barkAlgebraIO
         authorId <- loginTestUser(userService, Name("test user"))
-        _ <- barksService.rebark(authorId, BarkId.random(), "some added content").recover { case BarkNotFound =>
-          ()
-        }
+        _ <- barksService.rebark(authorId, BarkId.random(), "some added content").expectError(BarkNotFound)
       yield ()
     }
