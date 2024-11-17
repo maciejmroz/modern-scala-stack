@@ -7,10 +7,9 @@ import cats.syntax.all.*
   */
 extension [F[_]: MonadThrow, A](m: F[Option[A]])
   def getOrFailWith(t: Throwable): F[A] =
-    m.flatMap {
+    m.flatMap:
       case Some(v) => v.pure[F]
       case None    => MonadThrow[F].raiseError(t)
-    }
 
 /** This is a testing utility that recovers from specific error turning F with that error back into successful F[Unit].
   * This is useful for testing failure scenarios.

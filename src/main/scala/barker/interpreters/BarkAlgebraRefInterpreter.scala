@@ -39,7 +39,7 @@ private[interpreters] class BarkAlgebraRefInterpreter(ref: Ref[IO, Map[BarkId, B
         likes = Likes(0),
         rebarks = Rebarks(0)
       )
-      _ <- ref.update { barksMap =>
+      _ <- ref.update: barksMap =>
         // to correctly handle concurrency, we need to fetch source again inside update
         val withSourceUpdated = barksMap.get(sourceBarkId) match
           case Some(v) => barksMap + (v.id -> v.copy(likes = Likes(v.likes.value)))
@@ -48,7 +48,6 @@ private[interpreters] class BarkAlgebraRefInterpreter(ref: Ref[IO, Map[BarkId, B
           // guess that's ok for test implementation
           case None => barksMap
         withSourceUpdated + (newBark.id -> newBark)
-      }
     yield newBark
 
   override def list(author: UserId): IO[List[Bark]] =

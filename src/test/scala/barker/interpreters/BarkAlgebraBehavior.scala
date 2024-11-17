@@ -18,31 +18,31 @@ trait BarkAlgebraBehavior extends BasicSpec:
   def barkAlgebraBehavior(userAlgebraIO: IO[UserAlgebra], barkAlgebraIO: IO[BarkAlgebra]): Unit =
     "allows posting and retrieving a bark" in {
       for
-        userService <- userAlgebraIO
-        barksService <- barkAlgebraIO
-        authorId <- loginTestUser(userService, Name("test user"))
-        bark <- barksService.post(authorId, "some content")
-        allBarks <- barksService.list(authorId)
+        userAlgebra <- userAlgebraIO
+        barksAlgebra <- barkAlgebraIO
+        authorId <- loginTestUser(userAlgebra, Name("test user"))
+        bark <- barksAlgebra.post(authorId, "some content")
+        allBarks <- barksAlgebra.list(authorId)
       yield allBarks.find(_.id == bark.id) shouldBe bark.some
     }
 
     "allows posting and rebarking a bark" in {
       for
-        userService <- userAlgebraIO
-        barksService <- barkAlgebraIO
-        authorId <- loginTestUser(userService, Name("test user"))
-        authorId2 <- loginTestUser(userService, Name("test user2"))
-        originalBark <- barksService.post(authorId, "some content")
-        newBark <- barksService.rebark(authorId2, originalBark.id, "some added content")
-        allBarks <- barksService.list(authorId2)
+        userAlgebra <- userAlgebraIO
+        barksAlgebra <- barkAlgebraIO
+        authorId <- loginTestUser(userAlgebra, Name("test user"))
+        authorId2 <- loginTestUser(userAlgebra, Name("test user2"))
+        originalBark <- barksAlgebra.post(authorId, "some content")
+        newBark <- barksAlgebra.rebark(authorId2, originalBark.id, "some added content")
+        allBarks <- barksAlgebra.list(authorId2)
       yield allBarks.find(_.id == newBark.id) shouldBe newBark.some
     }
 
     "fails with BarkNotFound when trying to rebark non-existing bark" in {
       for
-        userService <- userAlgebraIO
-        barksService <- barkAlgebraIO
-        authorId <- loginTestUser(userService, Name("test user"))
-        _ <- barksService.rebark(authorId, BarkId.random(), "some added content").expectError(BarkNotFound)
+        userAlgebra <- userAlgebraIO
+        barkAlgebra <- barkAlgebraIO
+        authorId <- loginTestUser(userAlgebra, Name("test user"))
+        _ <- barkAlgebra.rebark(authorId, BarkId.random(), "some added content").expectError(BarkNotFound)
       yield ()
     }

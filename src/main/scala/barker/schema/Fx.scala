@@ -7,7 +7,7 @@ import cats.~>
 import barker.entities.AccessToken
 
 /** App context is needed to pass information from HTTP request to the resolver. It forces us to use
-  * [[cats.data.Kleisli]] in the resolvers, and lifting [[cats.effect.IO]] returned from services into Kleisli. This
+  * [[cats.data.Kleisli]] in the resolvers, and lifting [[cats.effect.IO]] returned from algebras into Kleisli. This
   * might be somewhat unintuitive to Scala newcomers, but is not really a huge deal, and hopefully we can contain this
   * complexity to HTTP/GraphQL wiring only.
   */

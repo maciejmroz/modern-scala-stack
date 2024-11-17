@@ -10,7 +10,9 @@ import barker.entities.{AccessToken, BarkId, Name, UserId}
 import barker.interpreters.Interpreters
 import barker.programs.UserProgram
 
-/** Support for using domain types in GraphQL
+/** Support for using domain types in GraphQL. May want to move this to separate file in the future. It may be possible
+  * to generalize, but I did not explore that possibility as I feel having control over what is exposed and how matters
+  * quite a bit in this case.
   */
 
 //use scalarSchema to have unique type name and comment

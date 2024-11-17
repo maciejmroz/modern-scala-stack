@@ -31,10 +31,9 @@ object Main extends IOApp:
     * implemented in terms of pure http4s/cats types and without using final tagless style, which is still very compact.
     */
   private def accessTokenMiddleware(routes: HttpRoutes[Fx]): HttpRoutes[Fx] =
-    Kleisli { (req: Request[Fx]) =>
+    Kleisli: (req: Request[Fx]) =>
       val at = req.headers.get(TokenHeader).map(_.head.value)
       OptionT(routes.run(req).value.local[AppContext](_.copy(accessToken = at.map(AccessToken.apply))))
-    }
 
   private def makeHttpApp(
       graphQLRoutes: HttpRoutes[Fx]
@@ -44,14 +43,13 @@ object Main extends IOApp:
   private def initInterpreters(): Resource[IO, Interpreters] =
     for
       transactor <- DB.transactor[IO](appConfig.db)
-      interpreters <- Resource.eval {
+      interpreters <- Resource.eval:
         for
           _ <- logger.info(s"Running db migrations ...")
           _ <- DB.runMigrations(appConfig.db)
-          _ <- logger.info(s"Wiring services ...")
+          _ <- logger.info(s"Wiring interpreters ...")
           interpreters <- Interpreters(transactor)
         yield interpreters
-      }
     yield interpreters
 
   def run(args: List[String]): IO[ExitCode] =

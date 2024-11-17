@@ -3,7 +3,7 @@ package barker.algebras
 import barker.entities.{Bark, BarkId, UserId}
 import cats.effect.IO
 
-/** Service definitions
+/** Algebra definitions
   *
   * Why fix everything on IO effect and inject dependencies via constructor parameters? Because it is extremely simple
   * to grasp.

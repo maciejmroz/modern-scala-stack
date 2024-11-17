@@ -35,12 +35,14 @@ trait GraphQLSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers:
     // Use Circe decoder defined in Caliban to map from JsonObject to Map[String, InputValue]
     val circeInputDecoder = caliban.InputValue.circeDecoder
     val calibanVariables = variables.toMap
-      .map { case (str, json) => str -> circeInputDecoder.decodeJson(json) }
-      .collect { case (str, Right(i)) => str -> i }
+      .map:
+        case (str, json) => str -> circeInputDecoder.decodeJson(json)
+      .collect:
+        case (str, Right(i)) => str -> i
 
     Dispatcher
       .parallel[Fx]
-      .use { dispatcher =>
+      .use: dispatcher =>
         given interop: CatsInterop.Contextual[Fx, AppContext] =
           CatsInterop.contextual[Fx, AppContext](
             dispatcher
@@ -48,9 +50,8 @@ trait GraphQLSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers:
         GraphQLRoutes
           .makeInterpreter(interpreters)
           .flatMap(it => interop.toEffect(it.execute(query, variables = calibanVariables)))
-      }
       .run(ctx)
-      .flatMap {
-        case r @ GraphQLResponse(_, Nil, _, _)    => r.pure[IO]
-        case GraphQLResponse(_, error :: _, _, _) => IO.raiseError[GraphQLResponse[CalibanError]](error) // in tests, it's enough we fail here
-      }
+      .flatMap:
+        case r @ GraphQLResponse(_, Nil, _, _) => r.pure[IO]
+        case GraphQLResponse(_, error :: _, _, _) =>
+          IO.raiseError[GraphQLResponse[CalibanError]](error) // in tests, it's enough we fail here
