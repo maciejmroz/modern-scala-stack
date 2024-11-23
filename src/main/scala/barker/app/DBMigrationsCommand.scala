@@ -14,9 +14,7 @@ object DBMigrationsCommand extends IOApp:
   private val dbConfig = ConfigSource.default.at("db").loadOrThrow[DBConfig]
 
   def run(args: List[String]): IO[ExitCode] =
-    val migrate =
-      for
-        _ <- logger.info(s"Migrating database configuration")
-        _ <- DB.runMigrations(dbConfig)
-      yield ()
-    migrate.as(ExitCode.Success)
+    for
+      _ <- logger.info(s"Migrating database configuration")
+      _ <- DB.runMigrations(dbConfig)
+    yield ExitCode.Success
